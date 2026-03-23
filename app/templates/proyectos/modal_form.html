@@ -1,0 +1,30 @@
+<div class="modal-header">
+    <h5 class="modal-title">
+        {{ "Editar Proyecto" if proyecto else "Nuevo Proyecto" }}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form 
+    method="POST"
+    action="{{ url_for('proyectos.editar_proyecto', proyecto_id=proyecto.id) if proyecto else url_for('proyectos.crear_proyecto') }}"
+    onsubmit="submitForm(event, this)"
+>
+    <div class="modal-body">
+
+        <div class="mb-3">
+            <label>Nombre</label>
+            <input type="text" name="nombre" class="form-control" required
+                   value="{{ proyecto.nombre if proyecto else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Descripción</label>
+            <textarea name="descripcion" class="form-control">{{ proyecto.descripcion if proyecto else '' }}</textarea>
+        </div>
+
+    </div>
+    <div class="modal-footer">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+</form>

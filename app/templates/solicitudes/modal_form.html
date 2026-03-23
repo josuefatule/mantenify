@@ -1,0 +1,151 @@
+<div class="modal-header">
+    <h5 class="modal-title">
+        {{ "Editar Solicitud" if solicitud else "Nueva Solicitud" }}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('solicitudes.editar_solicitud', solicitud_id=solicitud.id) if solicitud 
+                  else url_for('solicitudes.crear_solicitud') }}"
+      onsubmit="submitForm(event, this)">
+
+    <div class="modal-body">
+
+        <!-- PROYECTO -->
+        <div class="mb-3">
+            <label class="form-label">Proyecto</label>
+            <select name="proyecto_id" id="selectProyecto" class="form-select" required>
+                <option value="">Seleccione un proyecto...</option>
+
+                {% for p in proyectos %}
+                <option value="{{ p.id }}"
+                    {% if solicitud and solicitud.proyecto_id == p.id %}selected{% endif %}>
+                    {{ p.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- UNIDAD -->
+        <div class="mb-3">
+            <label class="form-label">Unidad</label>
+            <select name="unidad_id" id="selectUnidad" class="form-select" required>
+                
+                {% if unidades %}
+                    <!-- Si está editando -->
+                    {% for u in unidades %}
+                    <option value="{{ u.id }}"
+                        {% if solicitud and solicitud.unidad_id == u.id %}selected{% endif %}>
+                        {{ u.nombre }}
+                    </option>
+                    {% endfor %}
+                {% else %}
+                    <!-- Si es nuevo → No tiene carga aún -->
+                    <option value="">Seleccione un proyecto para cargar unidades...</option>
+                {% endif %}
+
+            </select>
+        </div>
+
+        <!-- ACTIVO -->
+        <div class="mb-3">
+            <label class="form-label">Activo (Opcional)</label>
+            <select name="activo_id" id="selectActivo" class="form-select">
+
+                {% if activos %}
+                    <!-- Si está editando -->
+                    {% for a in activos %}
+                    <option value="{{ a.id }}"
+                        {% if solicitud and solicitud.activo_id == a.id %}selected{% endif %}>
+                        {{ a.nombre }}
+                    </option>
+                    {% endfor %}
+                {% else %}
+                    <!-- En modo crear -->
+                    <option value="">Seleccione una unidad para cargar activos...</option>
+                {% endif %}
+
+            </select>
+        </div>
+
+        <!-- PRIORIDAD -->
+        <div class="mb-3">
+            <label class="form-label">Prioridad</label>
+            <select name="prioridad" class="form-select" required>
+                <option value="baja"
+                    {% if solicitud and solicitud.prioridad == 'baja' %}selected{% endif %}>
+                    Baja
+                </option>
+                <option value="media"
+                    {% if not solicitud or solicitud.prioridad == 'media' %}selected{% endif %}>
+                    Media
+                </option>
+                <option value="alta"
+                    {% if solicitud and solicitud.prioridad == 'alta' %}selected{% endif %}>
+                    Alta
+                </option>
+            </select>
+        </div>
+
+        <!-- TÍTULO -->
+        <div class="mb-3">
+            <label class="form-label">Título</label>
+            <input type="text" name="titulo" class="form-control" required
+                   value="{{ solicitud.titulo if solicitud else '' }}">
+        </div>
+
+        <!-- DESCRIPCIÓN -->
+        <div class="mb-3">
+            <label class="form-label">Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="4">{{ solicitud.descripcion if solicitud else "" }}</textarea>
+        </div>
+
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+
+</form>
+
+<!-- AJAX SCRIPT -->
+<script>
+document.getElementById("selectProyecto").addEventListener("change", async function() {
+    const proyectoId = this.value;
+    const unidadSelect = document.getElementById("selectUnidad");
+    const activoSelect = document.getElementById("selectActivo");
+
+    unidadSelect.innerHTML = `<option value="">Cargando unidades...</option>`;
+    activoSelect.innerHTML = `<option value="">Seleccione una unidad para cargar activos...</option>`;
+
+    if (!proyectoId) return;
+
+    const res = await fetch(`/solicitudes/ajax/unidades/${proyectoId}`);
+    const data = await res.json();
+
+    unidadSelect.innerHTML = `<option value="">Seleccione una unidad...</option>`;
+
+    data.forEach(u => {
+        unidadSelect.innerHTML += `<option value="${u.id}">${u.nombre}</option>`;
+    });
+});
+
+document.getElementById("selectUnidad").addEventListener("change", async function() {
+    const unidadId = this.value;
+    const activoSelect = document.getElementById("selectActivo");
+
+    activoSelect.innerHTML = `<option value="">Cargando activos...</option>`;
+
+    if (!unidadId) return;
+
+    const res = await fetch(`/solicitudes/ajax/activos/${unidadId}`);
+    const data = await res.json();
+
+    activoSelect.innerHTML = `<option value="">Opcional</option>`;
+
+    data.forEach(a => {
+        activoSelect.innerHTML += `<option value="${a.id}">${a.nombre}</option>`;
+    });
+});
+</script>

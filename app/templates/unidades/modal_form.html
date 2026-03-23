@@ -1,0 +1,220 @@
+<div class="modal-header">
+    <h5 class="modal-title">
+        {{ "Editar Unidad" if unidad else "Nueva Unidad" }}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+{% if unidad %}
+<!-- =========================
+     MODO EDICIÓN
+========================= -->
+<form 
+    method="POST"
+    action="{{ url_for('unidades.editar_unidad', unidad_id=unidad.id) }}"
+    onsubmit="submitForm(event, this)"
+>
+    <div class="modal-body">
+
+        <div class="mb-3">
+            <label>Etapa</label>
+            <select name="etapa_id" class="form-select" required>
+                <option value="">Seleccione...</option>
+                {% for etapa in etapas %}
+                    <option value="{{ etapa.id }}"
+                        {% if unidad.etapa_id == etapa.id %}selected{% endif %}>
+                        {{ etapa.nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Nombre de la Unidad</label>
+            <input type="text" name="nombre" class="form-control" required
+                   value="{{ unidad.nombre }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Tipo</label>
+            <input type="text" name="tipo" class="form-control"
+                   value="{{ unidad.tipo if unidad else '' }}">
+        </div>
+
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+</form>
+
+{% else %}
+<!-- =========================
+     MODO CREACIÓN
+========================= -->
+<form 
+    method="POST"
+    action="{{ url_for('unidades.crear_unidad', proyecto_id=proyecto.id) }}"
+    onsubmit="submitForm(event, this)"
+    id="formUnidad"
+>
+    <div class="modal-body">
+
+        <div class="mb-3">
+            <label>Modo de creación</label>
+            <select name="modo_creacion" id="modo_creacion" class="form-select" onchange="cambiarModoCreacion()">
+                <option value="individual" selected>Individual</option>
+                <option value="masivo">Masivo</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Etapa</label>
+            <select name="etapa_id" class="form-select" required>
+                <option value="">Seleccione...</option>
+                {% for etapa in etapas %}
+                    <option value="{{ etapa.id }}">{{ etapa.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Tipo</label>
+            <input type="text" name="tipo" class="form-control">
+        </div>
+
+        <!-- =========================
+             CREACIÓN INDIVIDUAL
+        ========================= -->
+        <div id="bloque_individual">
+            <div class="mb-3">
+                <label>Nombre de la Unidad</label>
+                <input type="text" name="nombre" id="nombre_individual" class="form-control">
+            </div>
+        </div>
+
+        <!-- =========================
+             CREACIÓN MASIVA
+        ========================= -->
+        <div id="bloque_masivo" style="display:none;">
+            <div class="mb-3">
+                <label>Patrón de nomenclatura</label>
+                <select name="patron" id="patron" class="form-select" onchange="cambiarPatron()">
+                    <option value="lineal" selected>Lineal</option>
+                    <option value="por_pisos">Por pisos</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label>Prefijo</label>
+                <input type="text" name="prefijo" class="form-control" placeholder="Ej. I o A">
+            </div>
+
+            <!-- LINEAL -->
+            <div id="campos_lineal">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label>Número inicial</label>
+                        <input type="number" name="numero_inicial" class="form-control" value="1">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Cantidad</label>
+                        <input type="number" name="cantidad" class="form-control" value="1">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Incremento</label>
+                        <input type="number" name="incremento" class="form-control" value="1">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label>Padding (ceros a la izquierda)</label>
+                    <input type="number" name="padding" class="form-control" value="0" min="0">
+                    <small class="text-muted">
+                        0 = I1, I2, I3 / 2 = I01, I02, I03
+                    </small>
+                </div>
+            </div>
+
+            <!-- POR PISOS -->
+            <div id="campos_por_pisos" style="display:none;">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label>Piso inicial</label>
+                        <input type="number" name="piso_inicial" class="form-control" value="1">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Cantidad de pisos</label>
+                        <input type="number" name="cantidad_pisos" class="form-control" value="1">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Unidades por piso</label>
+                        <input type="number" name="unidades_por_piso" class="form-control" value="2">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label>Número inicial de unidad</label>
+                        <input type="number" name="numero_inicial_unidad" class="form-control" value="1">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label>Dígitos de unidad</label>
+                        <input type="number" name="digitos_unidad" class="form-control" value="2">
+                    </div>
+                </div>
+
+                <small class="text-muted">
+                    Ejemplo: piso inicial 1, 2 pisos, 2 unidades por piso, número inicial 1, dígitos 2 → 101, 102, 201, 202
+                </small>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+</form>
+
+<script>
+function cambiarModoCreacion() {
+    const modo = document.getElementById("modo_creacion").value;
+    const form = document.getElementById("formUnidad");
+    const bloqueIndividual = document.getElementById("bloque_individual");
+    const bloqueMasivo = document.getElementById("bloque_masivo");
+    const nombreIndividual = document.getElementById("nombre_individual");
+
+    if (modo === "individual") {
+        form.action = "{{ url_for('unidades.crear_unidad', proyecto_id=proyecto.id) }}";
+        bloqueIndividual.style.display = "block";
+        bloqueMasivo.style.display = "none";
+        nombreIndividual.required = true;
+    } else {
+        form.action = "{{ url_for('unidades.crear_unidades_masivas', proyecto_id=proyecto.id) }}";
+        bloqueIndividual.style.display = "none";
+        bloqueMasivo.style.display = "block";
+        nombreIndividual.required = false;
+    }
+}
+
+function cambiarPatron() {
+    const patron = document.getElementById("patron").value;
+    const lineal = document.getElementById("campos_lineal");
+    const porPisos = document.getElementById("campos_por_pisos");
+
+    if (patron === "lineal") {
+        lineal.style.display = "block";
+        porPisos.style.display = "none";
+    } else {
+        lineal.style.display = "none";
+        porPisos.style.display = "block";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    cambiarModoCreacion();
+    cambiarPatron();
+});
+</script>
+{% endif %}

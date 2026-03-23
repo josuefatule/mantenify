@@ -1,0 +1,53 @@
+<div class="modal-header">
+  <h5 class="modal-title">Editar cuota</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('finanzas.editar_cuota', cuota_id=cuota.id) }}"
+      onsubmit="submitForm(event, this)">
+
+  <div class="modal-body">
+
+    <div class="mb-2">
+      <small class="text-muted">
+        Unidad: 
+        {% if cuota.unidad %}
+          {{ cuota.unidad.nombre }}
+        {% else %}
+          (sin unidad)
+        {% endif %}
+      </small><br>
+      <small class="text-muted">
+        Periodo actual: {{ cuota.periodo.strftime('%Y-%m') }}
+      </small>
+    </div>
+
+    <div class="mb-3">
+      <label>Monto</label>
+      <input type="number" step="0.01" min="0" name="monto" class="form-control"
+             value="{{ cuota.monto }}">
+    </div>
+
+    <div class="mb-3">
+      <label>Estado</label>
+      <select name="estado" class="form-select">
+        <option value="Pendiente" {% if cuota.estado == "Pendiente" %}selected{% endif %}>Pendiente</option>
+        <option value="Pagado" {% if cuota.estado == "Pagado" %}selected{% endif %}>Pagado</option>
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label>Fecha de pago</label>
+      <input type="date" name="fecha_pago" class="form-control"
+             value="{{ cuota.fecha_pago.strftime('%Y-%m-%d') if cuota.fecha_pago else '' }}">
+      <small class="text-muted">Déjalo vacío si aún no se ha pagado.</small>
+    </div>
+
+  </div>
+
+  <div class="modal-footer">
+    <button class="btn btn-primary">Guardar cambios</button>
+  </div>
+
+</form>

@@ -1,0 +1,48 @@
+{% set hoy = fecha_hoy.strftime('%Y-%m-%d') %}
+<div class="modal-header">
+    <h5 class="modal-title">Asociar persona a unidad {{ unidad.nombre }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('personas.asociar_persona', unidad_id=unidad.id) }}"
+      onsubmit="submitForm(event, this)">
+
+    <div class="modal-body">
+        <input type="hidden" name="unidad_id" value="{{ unidad.id }}">
+        <div class="mb-3">
+            <label>Persona</label>
+            <select name="persona_id" class="form-select" required>
+                <option value="">Seleccione...</option>
+
+                {% for p in personas %}
+                <option value="{{ p.id }}">{{ p.nombre_completo }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Tipo de relación</label>
+            <select name="tipo" class="form-select" required>
+                <option value="propietario">Propietario</option>
+                <option value="inquilino">Inquilino</option>
+            </select>
+        </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="principal" id="principalCheck">
+            <label class="form-check-label" for="principalCheck">
+                Es persona principal
+            </label>
+        </div>
+        <div class="mb-3">
+            <label>Fecha desde</label>
+            <input type="date" name="fecha_desde" class="form-control"
+                value="{{ hoy }}" required>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+</form>

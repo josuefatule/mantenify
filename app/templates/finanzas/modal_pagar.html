@@ -1,0 +1,46 @@
+<div class="modal-header">
+    <h5 class="modal-title">Registrar pago</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('finanzas.pagar_cuota', cuota_id=cuota.id) }}"
+      onsubmit="submitForm(event, this)">
+
+    <div class="modal-body">
+
+        <p><strong>Unidad:</strong> {{ cuota.unidad.nombre }}</p>
+        <p><strong>Periodo:</strong> {{ cuota.periodo.strftime('%Y-%m') }}</p>
+        <p><strong>Monto:</strong> RD$ {{ "%.2f"|format(cuota.monto) }}</p>
+
+        <div class="mb-3">
+            <label>Fecha de pago</label>
+            <input type="date" 
+                   name="fecha_pago" 
+                   class="form-control"
+                   value="{{ hoy }}" 
+                   required>
+        </div>
+
+        <div class="mb-3">
+            <label>Método de pago</label>
+            <select name="metodo_pago" class="form-select" required>
+                <option value="Transferencia">Transferencia</option>
+                <option value="Efectivo">Efectivo</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Otro">Otro</option>
+            </select>
+        </div>
+
+        <div class="mb-3">
+            <label>Referencia (opcional)</label>
+            <input type="text" name="referencia" class="form-control">
+        </div>
+
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-success">Registrar Pago</button>
+    </div>
+
+</form>

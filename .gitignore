@@ -1,0 +1,21 @@
+# Entorno
+.env
+create_admin.py
+
+# Base de datos (CRÍTICO)
+*.sql
+
+# Entorno virtual
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+
+# Archivos temporales
+*.log
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db

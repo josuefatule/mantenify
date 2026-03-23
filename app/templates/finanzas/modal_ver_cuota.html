@@ -1,0 +1,61 @@
+<div class="modal-header">
+  <h5 class="modal-title">
+    Detalle de Cuota — Unidad {{ cuota.unidad.nombre }}
+  </h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<div class="modal-body">
+
+  <div class="mb-3">
+    <strong>Proyecto:</strong> {{ cuota.unidad.proyecto.nombre }}<br>
+    <strong>Etapa:</strong> {{ cuota.unidad.etapa.nombre if cuota.unidad.etapa else "-" }}<br>
+    <strong>Unidad:</strong> {{ cuota.unidad.nombre }}<br>
+    <strong>Periodo:</strong> {{ cuota.periodo.strftime('%Y-%m') }}<br>
+
+    <strong>Monto:</strong> RD${{ "%.2f"|format(cuota.monto) }}<br>
+    <strong>Estado:</strong>
+      {% if cuota.estado == "Pagado" %}
+        <span class="badge bg-success">Pagado</span>
+      {% else %}
+        <span class="badge bg-danger">Pendiente</span>
+      {% endif %}
+  </div>
+
+  {% if cuota.pago %}
+  <!-- INFO DE PAGO -->
+  <div class="alert alert-success">
+    <strong>Pago registrado:</strong><br>
+    Fecha: {{ cuota.pago.fecha_pago.strftime('%Y-%m-%d') }} <br>
+    Monto: RD${{ "%.2f"|format(cuota.pago.monto_pagado) }} <br>
+    Método: {{ cuota.pago.metodo_pago or "-" }} <br>
+    Referencia: {{ cuota.pago.referencia or "-" }}
+  </div>
+  {% endif %}
+
+</div>
+
+<div class="modal-footer">
+
+  {% if cuota.estado != "Pagado" %}
+  <button class="btn btn-success"
+          onclick="openModal('{{ url_for('finanzas.modal_pagar_cuota', cuota_id=cuota.id) }}')">
+    Registrar Pago
+  </button>
+  {% endif %}
+
+  <button class="btn btn-warning"
+          onclick="openModal('{{ url_for('finanzas.modal_editar_cuota', cuota_id=cuota.id) }}')">
+    Editar
+  </button>
+
+  <form method="POST" action="{{ url_for('finanzas.eliminar_cuota', cuota_id=cuota.id) }}"
+        style="display:inline-block"
+        onsubmit="return confirm('¿Eliminar esta cuota?');">
+
+    <button class="btn btn-danger">
+      Eliminar
+    </button>
+  </form>
+
+</div>

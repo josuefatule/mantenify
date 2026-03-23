@@ -1,0 +1,41 @@
+<div class="modal-header">
+    <h5 class="modal-title">
+        {{ "Editar Activo" if activo else "Nuevo Activo" }}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form 
+    method="POST"
+    action="{% if activo %} 
+                {{ url_for('activos.editar_activo', activo_id=activo.id) }}
+            {% else %} 
+                {{ url_for('activos.crear_activo', unidad_id=unidad.id) }}
+            {% endif %}"
+    onsubmit="submitForm(event, this)"
+>
+    <div class="modal-body">
+
+        <div class="mb-3">
+            <label>Nombre del Activo</label>
+            <input type="text" name="nombre" class="form-control" required
+                   value="{{ activo.nombre if activo else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Tipo</label>
+            <input type="text" name="tipo" class="form-control"
+                   value="{{ activo.tipo if activo else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Descripción</label>
+            <textarea name="descripcion" class="form-control">{{ activo.descripcion if activo else "" }}</textarea>
+        </div>
+
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+</form>

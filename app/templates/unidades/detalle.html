@@ -1,0 +1,414 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-between">
+  <h2 class="mb-4">Unidad: {{ unidad.nombre }}</h2>
+
+<a href="{{ url_for('etapas.detalle_etapa', etapa_id=etapa.id) }}"
+   class="btn btn-secondary mb-3">
+    Volver a Etapa
+</a>
+</div>
+
+<!-- =========================================
+     INFORMACIÓN GENERAL
+========================================= -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h4 class="mb-3">Información General</h4>
+
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>Proyecto:</strong> {{ proyecto.nombre }}</p>
+        <p><strong>Etapa:</strong> {{ etapa.nombre }}</p>
+      </div>
+      <div class="col-md-6">
+        <p><strong>Nombre:</strong> {{ unidad.nombre }}</p>
+        <p><strong>Tipo:</strong> {{ unidad.tipo or "No indicado" }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =========================================
+     MÉTRICAS RÁPIDAS
+========================================= -->
+
+<!-- =========================================
+     FINANZAS — CUOTAS DE MANTENIMIENTO
+========================================= -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+
+    <h4 class="mb-3">
+      Finanzas de la Unidad
+      <button class="btn btn-outline-primary btn-sm float-end"
+              onclick="openModal('{{ url_for('finanzas.modal_historial_unidad', unidad_id=unidad.id) }}')">
+        Ver historial completo
+      </button>
+    </h4>
+
+    <!-- RESUMEN -->
+    <div class="row mb-4">
+
+      <div class="col-md-4">
+        <div class="card text-center border-danger shadow-sm">
+          <div class="card-body">
+            <h6 class="text-muted">Total Pendiente</h6>
+            <h3 class="text-danger fw-bold">RD$ {{ "%.2f"|format(total_pendiente) }}</h3>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card text-center border-success shadow-sm">
+          <div class="card-body">
+            <h6 class="text-muted">Último Pago</h6>
+            {% if ultimo_pago %}
+              <h5 class="text-success fw-bold">
+                {{ ultimo_pago.fecha_pago.strftime('%Y-%m-%d') }}
+              </h5>
+              <small class="text-muted">RD$ {{ "%.2f"|format(ultimo_pago.monto) }}</small>
+            {% else %}
+              <p class="text-muted mt-3">No hay pagos registrados</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="card text-center border-primary shadow-sm">
+          <div class="card-body">
+            <h6 class="text-muted">Próxima cuota pendiente</h6>
+            {% if cuotas_pendientes %}
+              <h5 class="fw-bold text-primary">
+                {{ cuotas_pendientes[0].periodo.strftime('%Y-%m') }}
+              </h5>
+            {% else %}
+              <p class="text-muted mt-3">Al día</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ÚLTIMAS CUOTAS -->
+    <h5 class="mb-3">Últimas cuotas</h5>
+
+    {% if cuotas %}
+      <table class="table table-sm table-bordered">
+        <thead class="table-light">
+          <tr class="text-center">
+            <th>Periodo</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for c in cuotas[:6] %}
+          <tr class="text-center">
+            <td>{{ c.periodo.strftime('%Y-%m') }}</td>
+            <td>RD$ {{ "%.2f"|format(c.monto) }}</td>
+            <td>
+              {% if c.estado == "Pagado" %}
+                <span class="badge bg-success">Pagado</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Pendiente</span>
+              {% endif %}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-info"
+                    onclick="openModal('{{ url_for('finanzas.modal_ver_cuota', cuota_id=c.id) }}')">
+                Ver
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+
+      </table>
+
+    {% else %}
+      <p class="text-muted">No existen cuotas para esta unidad.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+<div class="row mb-4">
+
+  <div class="col-md-4">
+    <div class="card shadow-sm text-center border-primary">
+      <div class="card-body">
+        <h6 class="text-secondary mb-1">Activos</h6>
+        <h2 class="text-primary fw-bold">{{ activos|length }}</h2>
+        <a href="{{ url_for('activos.lista_activos', unidad_id=unidad.id) }}" 
+           class="btn btn-outline-primary btn-sm mt-2">
+           Gestionar
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm text-center border-warning">
+      <div class="card-body">
+        <h6 class="text-secondary mb-1">Solicitudes Abiertas</h6>
+        <h2 class="text-warning fw-bold">{{ solicitudes_abiertas|length }}</h2>
+        <a href="{{ url_for('solicitudes.lista_solicitudes') }}?unidad={{ unidad.id }}"
+           class="btn btn-outline-warning btn-sm mt-2">
+           Ver solicitudes
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm text-center border-success">
+      <div class="card-body">
+        <h6 class="text-secondary mb-1">Cuotas Pendientes</h6>
+        <h2 class="text-success fw-bold">{{ cuotas_pendientes|length }}</h2>
+        <span class="btn btn-outline-success btn-sm mt-2 disabled">Módulo financiero</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- =========================================
+     ACTIVOS
+========================================= -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+
+    <h4 class="mb-3">
+      Activos de la Unidad
+      <a href="{{ url_for('activos.lista_activos', unidad_id=unidad.id) }}"
+         class="btn btn-primary btn-sm float-end">
+         Gestionar Activos
+      </a>
+    </h4>
+
+    {% if activos %}
+      <ul class="list-group">
+        {% for a in activos %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <div>
+            <strong>{{ a.nombre }}</strong><br>
+            <small class="text-muted">{{ a.tipo }}</small>
+          </div>
+
+          <a class="btn btn-outline-secondary btn-sm"
+             href="{{ url_for('activos.lista_activos', unidad_id=unidad.id) }}">
+             Gestionar
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="text-muted">No hay activos registrados.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- =========================================
+     SOLICITUDES
+========================================= -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h4 class="mb-3">
+      Solicitudes de Mantenimiento
+      <button class="btn btn-success btn-sm float-end"
+              onclick="openModal('{{ url_for('solicitudes.modal_crear_solicitud') }}')">
+        Nueva Solicitud
+      </button>
+    </h4>
+
+    {% if solicitudes %}
+
+      <table class="table table-bordered align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Título</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for s in solicitudes %}
+          <tr>
+            <td>{{ s.titulo }}</td>
+
+            <td>
+              <span class="badge 
+                {% if s.estado == 'pendiente' %}bg-secondary
+                {% elif s.estado == 'en_proceso' %}bg-info
+                {% else %}bg-success{% endif %}">
+                {{ s.estado }}
+              </span>
+            </td>
+
+            <td>{{ s.fecha_creada.strftime('%d-%m-%Y') }}</td>
+
+            <td>
+              <a href="{{ url_for('solicitudes.detalle_solicitud', solicitud_id=s.id) }}"
+                 class="btn btn-outline-primary btn-sm">Ver</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+    {% else %}
+      <p class="text-muted">No hay solicitudes para esta unidad.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- =========================================
+     PERSONAS
+========================================= -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+
+    <h4 class="mb-3">
+      Personas asociadas
+      <button class="btn btn-primary btn-sm float-end"
+              onclick="openModal('{{ url_for('personas.modal_asociar_persona', unidad_id=unidad.id) }}')">
+        Asociar Persona
+      </button>
+    </h4>
+
+    <!-- PROPIETARIOS -->
+    <h5 class="mt-3">Propietarios</h5>
+    <table class="table table-sm table-bordered">
+      <thead class="table-light">
+        <tr class="text-center">
+          <th>Nombre</th>
+          <th>Principal</th>
+          <th>Desde</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in unidad.unidad_personas if r.es_propietario and r.es_actual %}
+        <tr class="text-center">
+          <td>{{ r.persona.nombre_completo }}</td>
+          <td>{{ "Sí" if r.es_principal else "No" }}</td>
+          <td>{{ r.fecha_desde }}</td>
+          <td class="d-flex justify-content-center">
+            <form method="post" 
+                  action="{{ url_for('personas.desactivar_relacion', rel_id=r.id) }}"
+                  onsubmit="return confirm('¿Desvincular a esta persona?');">
+              <button class="btn btn-danger btn-sm">Desactivar</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- INQUILINOS -->
+    <h5 class="mt-4">Inquilinos</h5>
+    <table class="table table-sm table-bordered">
+      <thead class="table-light">
+        <tr class="text-center">
+          <th>Nombre</th>
+          <th>Principal</th>
+          <th>Desde</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in unidad.unidad_personas if not r.es_propietario and r.es_actual %}
+        <tr class="text-center">
+          <td>{{ r.persona.nombre_completo }}</td>
+          <td>{{ "Sí" if r.es_principal else "No" }}</td>
+          <td>{{ r.fecha_desde }}</td>
+          <td class="d-flex justify-content-center">
+            <form method="post" 
+                  action="{{ url_for('personas.desactivar_relacion', rel_id=r.id) }}"
+                  onsubmit="return confirm('¿Desvincular a esta persona?');">
+              <button class="btn btn-danger btn-sm">Desactivar</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+
+  </div>
+</div>
+<!-- =========================================
+     HISTÓRICO DE RELACIONES
+========================================= -->
+<div class="card shadow-sm mb-4 mt-4">
+  <div class="card-body">
+
+    <h4 class="mb-3">Histórico de personas asociadas</h4>
+
+    {% set historial = unidad.unidad_personas | selectattr("es_actual", "equalto", False) | list %}
+
+    {% if historial %}
+      <table class="table table-sm table-bordered">
+        <thead class="table-light">
+          <tr class="text-center">
+            <th>Persona</th>
+            <th>Rol</th>
+            <th>Principal</th>
+            <th>Desde</th>
+            <th>Hasta</th>
+            {% if current_user.is_admin() %}
+              <th>Acciones</th>
+            {% endif %}
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for r in historial | sort(attribute="fecha_hasta", reverse=True) %}
+          <tr class="text-center">
+            <td>{{ r.persona.nombre_completo }}</td>
+            <td>
+              {% if r.es_propietario %}
+                <span class="badge bg-primary">Propietario</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Inquilino</span>
+              {% endif %}
+            </td>
+            <td>{{ "Sí" if r.es_principal else "No" }}</td>
+            <td>{{ r.fecha_desde }}</td>
+            <td>{{ r.fecha_hasta or "—" }}</td>
+            {% if current_user.is_admin() %}
+            <td class="d-flex justify-content-center gap-3">
+              <button class="btn btn-sm btn-warning"
+                onclick="openModal('{{ url_for('personas.modal_editar_relacion', rel_id=r.id) }}')">
+                Editar
+              </button>
+              <form method="POST"
+                    action="{{ url_for('personas.borrar_relacion', rel_id=r.id) }}"
+                    onsubmit="return confirm('¿Eliminar completamente esta relación del historial? Esta acción no se puede deshacer.');">
+                <button class="btn btn-danger btn-sm">Eliminar</button>
+              </form>
+            </td>
+          {% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+
+      </table>
+
+    {% else %}
+      <p class="text-muted">No hay historial de relaciones anteriores.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+
+{% endblock %}

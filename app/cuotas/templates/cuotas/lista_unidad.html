@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 class="mb-3">Cuotas de mantenimiento</h2>
+
+<p>
+  <strong>Proyecto:</strong> {{ unidad.proyecto.nombre }}<br>
+  <strong>Unidad:</strong> {{ unidad.nombre }}
+</p>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+
+  <div>
+    <form method="get" class="d-flex align-items-center gap-2">
+      <label class="form-label mb-0 me-2">Estado:</label>
+      <select name="estado" class="form-select form-select-sm" onchange="this.form.submit()">
+        <option value="todas"    {% if filtro_estado == 'todas' %}selected{% endif %}>Todas</option>
+        <option value="Pendiente" {% if filtro_estado == 'Pendiente' %}selected{% endif %}>Pendientes</option>
+        <option value="Pagado"    {% if filtro_estado == 'Pagado' %}selected{% endif %}>Pagadas</option>
+      </select>
+    </form>
+  </div>
+
+  <button class="btn btn-sm btn-primary"
+          onclick="openModal('{{ url_for('cuotas.modal_nueva_cuota', unidad_id=unidad.id) }}')">
+    Nueva cuota
+  </button>
+
+</div>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Periodo</th>
+      <th>Monto</th>
+      <th>Estado</th>
+      <th>Fecha pago</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for c in cuotas %}
+    <tr>
+      <td>{{ c.periodo.strftime('%m/%Y') }}</td>
+      <td>RD$ {{ '%.2f'|format(c.monto) }}</td>
+      <td>
+        {% if c.estado == 'Pagado' %}
+          <span class="badge bg-success">Pagado</span>
+        {% else %}
+          <span class="badge bg-warning text-dark">Pendiente</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if c.fecha_pago %}
+          {{ c.fecha_pago.strftime('%d-%m-%Y') }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>
+        {% if c.estado != 'Pagado' %}
+        <form method="POST"
+              action="{{ url_for('cuotas.pagar_cuota', cuota_id=c.id) }}"
+              style="display:inline-block"
+              onsubmit="return confirm('¿Marcar esta cuota como pagada?');">
+          <button class="btn btn-sm btn-success">
+            Marcar pagada
+          </button>
+        </form>
+        {% else %}
+          <span class="text-muted">Sin acciones</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<a href="{{ url_for('unidades.lista_unidades', proyecto_id=unidad.proyecto_id) }}"
+   class="btn btn-secondary mt-3">
+   ← Volver a unidades
+</a>
+
+{% endblock %}

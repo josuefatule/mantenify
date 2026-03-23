@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4" style="gap: 1rem;">
+    <h2 class="mb-4">Personas</h2>
+    <button 
+        class="btn btn-primary"
+        onclick="openModal('{{ url_for('personas.modal_crear_persona') }}')">
+        Nueva Persona
+    </button>
+</div>
+
+<!-- ============================
+     GRID DE PERSONAS
+============================ -->
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+
+    {% for p in personas %}
+    <div class="col">
+        <div class="persona-card card shadow-sm p-3">
+
+            <!-- ----- INFO COMPACTA ----- -->
+            <h5 class="fw-bold mb-1 persona-nombre">{{ p.nombre_completo }}</h5>
+            <div class="persona-info">
+
+                <p class="text-muted mb-1">
+                    <strong>Email:</strong> {{ p.email or "-" }}
+                </p>
+
+                <p class="text-muted mb-1">
+                    <strong>Tel:</strong> {{ p.telefono or "-" }}
+                </p>
+
+                <p class="text-muted mb-1">
+                    <strong>ID:</strong> {{ p.identificacion or "-" }}
+                </p>
+
+                {% if p.activo %}
+                    <span class="badge bg-success">Activo</span>
+                {% else %}
+                    <span class="badge bg-secondary">Inactivo</span>
+                {% endif %}
+            </div>
+
+            <!-- ----- ACCIONES EXPANDIDAS ----- -->
+            <div class="persona-actions text-center mt-3">
+
+                <a href="{{ url_for('personas.detalle_persona', persona_id=p.id) }}"
+                    class="btn btn-outline-primary w-100 mb-2">
+                    Ver
+                </a>
+
+                <button class="btn btn-outline-warning w-100 mb-2"
+                    onclick="event.stopPropagation(); openModal('{{ url_for('personas.modal_editar_persona', persona_id=p.id) }}')">
+                    Editar
+                </button>
+
+                <form method="POST"
+                      action="{{ url_for('personas.toggle_persona', persona_id=p.id) }}"
+                      onsubmit="event.stopPropagation();">
+
+                    {% if p.activo %}
+                        <button class="btn btn-outline-danger w-100">Desactivar</button>
+                    {% else %}
+                        <button class="btn btn-outline-success w-100">Activar</button>
+                    {% endif %}
+                </form>
+
+            </div>
+
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+
+<!-- ============================
+     STYLES
+============================ -->
+<style>
+.persona-card.expanded .persona-nombre {opacity: 1 !important;   /* siempre visible */}
+/* ------ CARD BASE ------ */
+.persona-card {
+    cursor: pointer;
+    border-radius: 12px;
+    transition: all 0.25s ease;
+}
+.persona-card:hover {transform: translateY(-2px);}
+/* ------ ESTADO EXPANDIDO ------ */
+.persona-card.expanded {
+    background: #f8f9fa;
+    border: 2px solid #0d6efd;
+    transform: scale(1.02);
+    z-index: 5;
+}
+/* ------ ANIMAR ENTRE INFO Y ACCIONES ------ */
+.persona-info {transition: opacity 0.2s ease;}
+.persona-card.expanded .persona-info {opacity: 0;}
+
+/* ------ ACCIONES OCULTAS ------ */
+.persona-actions {display: none;}
+.persona-card.expanded .persona-actions {display: block;}
+.persona-nombre {transition: opacity 0.2s ease;}
+.persona-card.expanded .persona-nombre {opacity: 1 !important;}
+</style>
+
+<!-- ============================
+     JAVASCRIPT EXPANDIBLE
+============================ -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    console.log("Inicializando buscador + cards...");
+    /* ==========================================================
+       1) EXPANDABLE CARDS — abrir/cerrar estilos
+    ========================================================== */
+    const cards = document.querySelectorAll(".persona-card");
+    cards.forEach(card => {
+        card.addEventListener("click", function () {
+            // Cerrar otros cards
+            cards.forEach(c => {
+                if (c !== card) c.classList.remove("expanded");
+            });
+            // Abrir/cerrar el card actual
+            this.classList.toggle("expanded");
+        });
+    });
+    /* ==========================================================
+       2) BUSCADOR DINÁMICO
+    ========================================================== */
+    const buscador = document.createElement("input");
+    buscador.type = "text";
+    buscador.placeholder = "Buscar persona...";
+    buscador.className = "form-control mb-4";
+    // Insertarlo antes del grid que contiene todos los cards
+    const grid = document.querySelector(".row");
+    if (grid) {
+        grid.parentNode.insertBefore(buscador, grid);
+    }
+    buscador.addEventListener("input", function () {
+        const term = this.value.toLowerCase().trim();
+        console.log("Filtrando:", term);
+        cards.forEach(card => {
+            const content = card.innerText.toLowerCase();
+            // Mostrar / ocultar
+            if (content.includes(term)) {
+                card.parentElement.style.display = "block";
+            } else {
+                card.parentElement.style.display = "none";
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

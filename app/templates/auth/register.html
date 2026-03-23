@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Registrar usuario | Mantenify{% endblock %}
+
+{% block content %}
+<h2>Registrar usuario</h2>
+
+<form method="post" class="mt-3" autocomplete="off">
+
+  <!-- NOMBRE -->
+  <div class="mb-3">
+    <label for="nombre" class="form-label">Nombre completo</label>
+    <input type="text" class="form-control" id="nombre" name="nombre" required>
+  </div>
+
+  <!-- EMAIL -->
+  <div class="mb-3">
+    <label for="email" class="form-label">Correo electrónico</label>
+    <input type="email" class="form-control" id="email" name="email" required>
+  </div>
+
+  <!-- ROL -->
+  <div class="mb-3">
+    <label for="rol" class="form-label">Rol</label>
+    <select class="form-select" id="rol" name="rol" required>
+      <option value="operativo" selected>Operativo</option>
+      <option value="tecnico">Técnico</option>
+      <option value="admin">Administrador</option>
+    </select>
+    <div class="form-text">
+      • <strong>Operativo:</strong> puede ver solicitudes y crear nuevas  
+      • <strong>Técnico:</strong> puede ver y gestionar sus órdenes de trabajo  
+      • <strong>Administrador:</strong> acceso total
+    </div>
+  </div>
+
+  <!-- PASSWORD -->
+  <div class="mb-3">
+    <label for="password" class="form-label">Contraseña</label>
+    <input type="password" class="form-control" id="password" name="password" required>
+  </div>
+
+  <!-- BOTÓN -->
+  <button type="submit" class="btn btn-success">Crear usuario</button>
+
+</form>
+{% endblock %}

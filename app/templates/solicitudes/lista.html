@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 class="mb-4">Solicitudes de Mantenimiento</h2>
+
+<!-- Botón crear -->
+<button 
+    onclick="openModal('{{ url_for('solicitudes.modal_crear_solicitud') }}')" 
+    class="btn btn-primary mb-3">
+    Nueva Solicitud
+</button>
+
+<!-- FILTROS -->
+<form method="get" class="row g-3 mb-4">
+
+    <!-- FILTRO PROYECTO -->
+    <div class="col-md-4">
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto" class="form-select" onchange="this.form.submit()">
+            <option value="">Todos</option>
+            {% for p in proyectos %}
+                <option value="{{ p.id }}" 
+                        {% if filtro_proyecto|int == p.id %}selected{% endif %}>
+                    {{ p.nombre }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- FILTRO ESTADO -->
+    <div class="col-md-4">
+        <label class="form-label">Estado</label>
+        <select name="estado" class="form-select" onchange="this.form.submit()">
+            <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos</option>
+            <option value="pendiente" {% if filtro_estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+            <option value="en_proceso" {% if filtro_estado == 'en_proceso' %}selected{% endif %}>En Proceso</option>
+            <option value="cerrada" {% if filtro_estado == 'cerrada' %}selected{% endif %}>Cerrada</option>
+        </select>
+    </div>
+
+</form>
+
+
+<!-- TABLA -->
+<table class="table table-bordered align-middle">
+    <thead class="table-light">
+        <tr>
+            <th style="width: 140px;">Fecha</th>
+            <th>Título</th>
+            <th>Proyecto</th>
+            <th>Unidad</th>
+            <th>Activo</th>
+            <th style="width: 100px;">Prioridad</th>
+            <th style="width: 120px;">Estado</th>
+            <th style="width: 230px;">Acciones</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+    {% for s in solicitudes %}
+        <tr>
+            <td>{{ s.fecha_creada.strftime('%d-%m-%Y %H:%M') }}</td>
+
+            <td>
+                <a href="{{ url_for('solicitudes.detalle_solicitud', solicitud_id=s.id) }}">
+                    {{ s.titulo }}
+                </a>
+            </td>
+
+            <td>{{ s.proyecto_rel.nombre }}</td>
+            <td>{{ s.unidad_rel.nombre }}</td>
+            <td>{{ s.activo_rel.nombre if s.activo_rel else "-" }}</td>
+
+            <!-- PRIORIDAD -->
+            <td>
+                <span class="badge 
+                    {% if s.prioridad == 'alta' %}bg-danger
+                    {% elif s.prioridad == 'media' %}bg-warning text-dark
+                    {% else %}bg-secondary{% endif %}">
+                    {{ s.prioridad|capitalize }}
+                </span>
+            </td>
+
+            <!-- ESTADO -->
+            <td>
+                <span class="badge 
+                    {% if s.estado == 'pendiente' %}bg-secondary
+                    {% elif s.estado == 'en_proceso' %}bg-info text-dark
+                    {% else %}bg-success{% endif %}">
+                    {{ s.estado.replace('_',' ')|capitalize }}
+                </span>
+            </td>
+
+            <!-- ACCIONES -->
+            <td>
+
+                <!-- Ver Detalle -->
+                <a href="{{ url_for('solicitudes.detalle_solicitud', solicitud_id=s.id) }}"
+                   class="btn btn-sm btn-info">
+                    Ver
+                </a>
+
+                <!-- Editar -->
+                <button class="btn btn-sm btn-warning"
+                        onclick="openModal('{{ url_for('solicitudes.modal_editar_solicitud', solicitud_id=s.id) }}')">
+                    Editar
+                </button>
+
+                <!-- Cambiar estado -->
+                <form method="post" 
+                      action="{{ url_for('solicitudes.cambiar_estado_solicitud', solicitud_id=s.id) }}" 
+                      style="display:inline-block">
+
+                    {% if s.estado != 'cerrada' %}
+                        <input type="hidden" name="estado" value="cerrada">
+                        <button class="btn btn-sm btn-success"
+                                onclick="return confirm('¿Marcar como cerrada?');">
+                            Cerrar
+                        </button>
+                    {% else %}
+                        <input type="hidden" name="estado" value="pendiente">
+                        <button class="btn btn-sm btn-secondary">
+                            Reabrir
+                        </button>
+                    {% endif %}
+                </form>
+
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

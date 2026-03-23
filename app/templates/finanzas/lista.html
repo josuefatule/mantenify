@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}Finanzas - Cuotas{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">Cuotas de mantenimiento</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <form method="get" class="row g-2 align-items-end">
+
+    <div class="col-md-3">
+      <label class="form-label">Proyecto</label>
+      <select name="proyecto" class="form-select" id="filterProyecto" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {% for p in proyectos %}
+          <option value="{{ p.id }}" {% if filtro_proyecto == p.id %}selected{% endif %}>
+            {{ p.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label">Etapa</label>
+      <select name="etapa" class="form-select" id="filterEtapa" onchange="this.form.submit()">
+        <option value="">Todas</option>
+        {% for e in etapas %}
+          <option value="{{ e.id }}" {% if filtro_etapa == e.id %}selected{% endif %}>
+            {{ e.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Mes</label>
+      <input type="month" name="mes" class="form-control"
+             value="{{ filtro_mes or '' }}"
+             onchange="this.form.submit()">
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label">Estado</label>
+      <select name="estado" class="form-select" onchange="this.form.submit()">
+        <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos</option>
+        <option value="Pendiente" {% if filtro_estado == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+        <option value="Pagado" {% if filtro_estado == 'Pagado' %}selected{% endif %}>Pagado</option>
+      </select>
+    </div>
+
+  </form>
+
+  <button class="btn btn-primary"
+          onclick="openModal('{{ url_for('finanzas.modal_cuota_masiva') }}')">
+    Generar cuotas por etapa
+  </button>
+</div>
+
+<table class="table table-striped table-bordered table-sm">
+  <thead class="table-light">
+    <tr>
+      <th>Proyecto</th>
+      <th>Etapa</th>
+      <th>Unidad</th>
+      <th>Periodo</th>
+      <th>Monto</th>
+      <th>Estado</th>
+      <th>Fecha pago</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+
+  <tbody>
+  {% for c in cuotas %}
+    {% set u = c.unidad %}
+    {% set etapa = u.etapa if u and u.etapa else None %}
+    {% set proyecto = etapa.proyecto if etapa and etapa.proyecto else None %}
+    <tr>
+      <td>{{ proyecto.nombre if proyecto else "-" }}</td>
+      <td>{{ etapa.nombre if etapa else "-" }}</td>
+      <td>
+        {% if u %}
+          <a href="{{ url_for('unidades.detalle_unidad', unidad_id=u.id) }}">
+            {{ u.nombre }}
+          </a>
+        {% else %}
+          -
+        {% endif %}
+      </td>
+      <td>{{ c.periodo.strftime('%Y-%m') }}</td>
+      <td>RD$ {{ "%.2f"|format(c.monto) }}</td>
+      <td>
+        {% if c.estado == "Pendiente" %}
+          <span class="badge bg-warning text-dark">Pendiente</span>
+        {% elif c.estado == "Pagado" %}
+          <span class="badge bg-success">Pagado</span>
+        {% else %}
+          <span class="badge bg-secondary">{{ c.estado }}</span>
+        {% endif %}
+      </td>
+      <td>
+        {{ c.fecha_pago.strftime('%Y-%m-%d') if c.fecha_pago else "—" }}
+      </td>
+      <td>
+        <button class="btn btn-sm btn-info"
+              onclick="openModal('{{ url_for('finanzas.modal_ver_cuota', cuota_id=c.id) }}')">
+          Ver
+      </button>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+
+</table>
+
+{% if not cuotas %}
+  <p class="text-muted">No hay cuotas registradas con los filtros seleccionados.</p>
+{% endif %}
+
+<script>
+// Cargar etapas dinámicamente cuando se cambie el proyecto (para el filtro)
+document.addEventListener("DOMContentLoaded", function() {
+  const proyectoFilter = document.getElementById("filterProyecto");
+  const etapaFilter = document.getElementById("filterEtapa");
+
+  if (proyectoFilter) {
+    proyectoFilter.addEventListener("change", async function() {
+      const proyectoId = this.value;
+
+      // Si está vacío, limpiamos etapas y enviamos el form
+      if (!proyectoId) {
+        etapaFilter.innerHTML = "<option value=''>Todas</option>";
+        this.form.submit();
+        return;
+      }
+
+      const res = await fetch(`/finanzas/ajax/etapas/${proyectoId}`);
+      const data = await res.json();
+
+      etapaFilter.innerHTML = "<option value=''>Todas</option>";
+      data.forEach(e => {
+        etapaFilter.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
+      });
+    });
+  }
+});
+</script>
+
+{% endblock %}

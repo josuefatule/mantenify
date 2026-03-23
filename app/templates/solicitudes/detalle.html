@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 class="mb-4">Solicitud: {{ solicitud.titulo }}</h2>
+
+<!-- TARJETA PRINCIPAL -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <p><strong>Proyecto:</strong><br> {{ solicitud.proyecto_rel.nombre }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Unidad:</strong><br> {{ solicitud.unidad_rel.nombre }}</p>
+            </div>
+            <div class="col-md-4">
+                <p><strong>Activo:</strong><br> 
+                    {{ solicitud.activo_rel.nombre if solicitud.activo_rel else "—" }}
+                </p>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <p><strong>Estado:</strong><br>
+                    <span class="badge 
+                        {% if solicitud.estado == 'pendiente' %}bg-secondary
+                        {% elif solicitud.estado == 'en_proceso' %}bg-info text-dark
+                        {% else %}bg-success{% endif %}">
+                        {{ solicitud.estado.replace('_',' ')|capitalize }}
+                    </span>
+                </p>
+            </div>
+
+            <div class="col-md-4">
+                <p><strong>Prioridad:</strong><br>
+                    <span class="badge 
+                        {% if solicitud.prioridad == 'alta' %}bg-danger
+                        {% elif solicitud.prioridad == 'media' %}bg-warning text-dark
+                        {% else %}bg-secondary{% endif %}">
+                        {{ solicitud.prioridad|capitalize }}
+                    </span>
+                </p>
+            </div>
+
+            <div class="col-md-4">
+                <p><strong>Creada:</strong><br>
+                    {{ solicitud.fecha_creada.strftime('%d-%m-%Y %H:%M') }}
+                </p>
+            </div>
+        </div>
+
+        <div>
+            <p class="mb-1"><strong>Descripción:</strong></p>
+            <p class="text-muted" style="white-space: pre-line;">
+                {{ solicitud.descripcion or "Sin descripción." }}
+            </p>
+        </div>
+
+    </div>
+</div>
+
+
+<!-- ORDEN DE TRABAJO -->
+<div class="mt-4">
+
+    {% if solicitud.orden %}
+        <a href="{{ url_for('ordenes.detalle_ot', ot_id=solicitud.orden.id) }}"
+           class="btn btn-primary btn-lg">
+           Ver Orden de Trabajo #{{ solicitud.orden.id }}
+        </a>
+    {% else %}
+        <a href="{{ url_for('ordenes.crear_ot', solicitud_id=solicitud.id) }}"
+           class="btn btn-success btn-lg">
+           Crear Orden de Trabajo
+        </a>
+    {% endif %}
+
+</div>
+
+<!-- VOLVER -->
+<a href="{{ url_for('solicitudes.lista_solicitudes') }}" 
+   class="btn btn-secondary mt-4">
+  ← Volver al listado
+</a>
+
+{% endblock %}

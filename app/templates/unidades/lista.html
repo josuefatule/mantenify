@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 class="mb-3">Unidad del Proyecto: {{ proyecto.nombre }}</h2>
+
+<button 
+    onclick="openModal('{{ url_for('unidades.modal_crear_unidad', proyecto_id=proyecto.id) }}')"
+    class="btn btn-primary mb-3">
+    Nueva Unidad
+</button>
+
+<a href="{{ url_for('proyectos.lista_proyectos') }}" class="btn btn-secondary mb-3">
+    ← Volver a Proyectos
+</a>
+
+{% for etapa in etapas %}
+  <h4 class="mt-4">{{ etapa.nombre }}</h4>
+
+  {% if unidades_por_etapa[etapa.id] %}
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Tipo</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for u in unidades_por_etapa[etapa.id] %}
+      <tr>
+        <td>{{ u.nombre }}</td>
+        <td>{{ u.tipo or '-' }}</td>
+
+        <td>
+          <a href="{{ url_for('unidades.detalle_unidad', unidad_id=u.id) }}"
+             class="btn btn-info btn-sm">
+            Ver
+          </a>
+
+          <button class="btn btn-warning btn-sm"
+                  onclick="openModal('{{ url_for('unidades.modal_editar_unidad', unidad_id=u.id) }}')">
+            Editar
+          </button>
+
+          <form method="post"
+                action="{{ url_for('unidades.eliminar_unidad', unidad_id=u.id) }}"
+                style="display:inline-block"
+                onsubmit="return confirm('¿Eliminar unidad?');">
+            <button class="btn btn-danger btn-sm">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% else %}
+    <p class="text-muted">No hay unidades en esta etapa.</p>
+  {% endif %}
+
+{% endfor %}
+
+<script>
+function inicializarFormularioUnidad() {
+    const modo = document.getElementById("modo_creacion");
+    const patron = document.getElementById("patron");
+
+    if (modo) {
+        cambiarModoCreacion();
+        modo.addEventListener("change", cambiarModoCreacion);
+    }
+
+    if (patron) {
+        cambiarPatron();
+        patron.addEventListener("change", cambiarPatron);
+    }
+}
+
+function cambiarModoCreacion() {
+    const modo = document.getElementById("modo_creacion");
+    const form = document.getElementById("formUnidad");
+    const bloqueIndividual = document.getElementById("bloque_individual");
+    const bloqueMasivo = document.getElementById("bloque_masivo");
+    const nombreIndividual = document.getElementById("nombre_individual");
+
+    if (!modo || !form || !bloqueIndividual || !bloqueMasivo || !nombreIndividual) {
+        return;
+    }
+
+    if (modo.value === "individual") {
+        form.action = "{{ url_for('unidades.crear_unidad', proyecto_id=proyecto.id) }}";
+        bloqueIndividual.style.display = "block";
+        bloqueMasivo.style.display = "none";
+        nombreIndividual.required = true;
+    } else {
+        form.action = "{{ url_for('unidades.crear_unidades_masivas', proyecto_id=proyecto.id) }}";
+        bloqueIndividual.style.display = "none";
+        bloqueMasivo.style.display = "block";
+        nombreIndividual.required = false;
+    }
+}
+
+function cambiarPatron() {
+    const patron = document.getElementById("patron");
+    const lineal = document.getElementById("campos_lineal");
+    const porPisos = document.getElementById("campos_por_pisos");
+
+    if (!patron || !lineal || !porPisos) {
+        return;
+    }
+
+    if (patron.value === "lineal") {
+        lineal.style.display = "block";
+        porPisos.style.display = "none";
+    } else {
+        lineal.style.display = "none";
+        porPisos.style.display = "block";
+    }
+}
+</script>
+
+{% endblock %}

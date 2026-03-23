@@ -1,0 +1,190 @@
+{% extends "reportes/base_reportes.html" %}
+{% block report_content %}
+
+<h3 class="mb-3">
+  Reporte financiero — Etapa {{ etapa.nombre }}
+</h3>
+
+<!-- ===========================
+      MÉTRICAS PRINCIPALES
+=========================== -->
+<div class="row mb-4">
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-primary text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Total Generado</h6>
+        <h3 class="text-primary fw-bold">RD$ {{ "%.2f"|format(total_cuotas) }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-success text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Total Pagado</h6>
+        <h3 class="text-success fw-bold">RD$ {{ "%.2f"|format(total_pagado) }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-warning text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Pendiente por Cobrar</h6>
+        <h3 class="text-warning fw-bold">RD$ {{ "%.2f"|format(total_pendiente) }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-danger text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Morosidad</h6>
+        <h3 class="text-danger fw-bold">RD$ {{ "%.2f"|format(total_moroso) }}</h3>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ===========================
+      FILTROS
+=========================== -->
+<form method="get" class="row g-3 mb-4">
+
+  <div class="col-md-4">
+    <label class="form-label">Mes inicio</label>
+    <input type="month" name="inicio" class="form-control"
+           value="{{ mes_inicio or '' }}">
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label">Mes fin</label>
+    <input type="month" name="fin" class="form-control"
+           value="{{ mes_fin or '' }}">
+  </div>
+
+  <div class="col-md-4 d-flex align-items-end">
+    <button class="btn btn-primary w-100">Filtrar</button>
+  </div>
+
+</form>
+
+
+<!-- ===========================
+      RESUMEN POR MES (ACCORDION)
+=========================== -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+
+    <h4 class="mb-3">Resumen por mes</h4>
+
+    <div class="accordion" id="accordionResumen">
+
+      {% for anio, meses in resumen_por_anio.items() %}
+      <div class="accordion-item">
+
+        <h2 class="accordion-header">
+          <button class="accordion-button {{ 'collapsed' if loop.index > 1 }}" 
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapse{{ anio }}">
+            {{ anio }}
+          </button>
+        </h2>
+
+        <div id="collapse{{ anio }}" 
+             class="accordion-collapse collapse {{ 'show' if loop.index == 1 }}">
+          <div class="accordion-body">
+
+            <table class="table table-bordered table-sm">
+              <thead class="table-light">
+                <tr>
+                  <th>Mes</th>
+                  <th>Total</th>
+                  <th>Pagado</th>
+                  <th>Pendiente</th>
+                </tr>
+              </thead>
+
+              <tbody>
+              {% for mes, info in meses %}
+                <tr>
+                  <td>
+                    <a href="?mes_detalle={{ mes }}{% if mes_inicio %}&inicio={{ mes_inicio }}{% endif %}{% if mes_fin %}&fin={{ mes_fin }}{% endif %}"
+                       class="text-decoration-none">
+                      {{ mes }}
+                    </a>
+                  </td>
+
+                  <td>RD$ {{ "%.2f"|format(info.total) }}</td>
+                  <td class="text-success">RD$ {{ "%.2f"|format(info.pagado) }}</td>
+                  <td class="text-danger">RD$ {{ "%.2f"|format(info.pendiente) }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+
+            </table>
+
+          </div>
+        </div>
+
+      </div>
+      {% endfor %}
+
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ===========================
+      DETALLE DE CUOTAS (AJAX)
+=========================== -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+
+    <h4 class="mb-3">Detalle de cuotas</h4>
+
+    <!-- Contenedor AJAX -->
+    <div id="detalleCuotasContainer">
+      {% include "reportes/_detalle_cuotas_parcial.html" with 
+        cuotas=cuotas,
+        page=page,
+        total_paginas=total_paginas,
+        etapa_id=etapa.id,
+        mes_detalle=mes_detalle,
+        mes_inicio=mes_inicio,
+        mes_fin=mes_fin
+      %}
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+// =========================================
+// AJAX para paginación del detalle
+// =========================================
+async function cargarPaginaEtapa(page) {
+
+  const params = new URLSearchParams(window.location.search);
+  params.set("page", page);
+
+  const url = `/reportes/etapa/{{ etapa.id }}/detalle_ajax?${params.toString()}`;
+
+  const cont = document.getElementById("detalleCuotasContainer");
+  cont.innerHTML = "<div class='p-5 text-center'>Cargando...</div>";
+
+  const resp = await fetch(url);
+  const html = await resp.text();
+  cont.innerHTML = html;
+
+  // subir al inicio del contenedor
+  cont.scrollIntoView({ behavior: "smooth" });
+}
+</script>
+
+{% endblock %}

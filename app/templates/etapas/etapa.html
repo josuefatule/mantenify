@@ -1,0 +1,353 @@
+{% extends "reportes/base_reportes.html" %}
+{% block report_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4" style="gap: 1rem;">
+  <h2 class="mb-4">Etapa: {{ etapa.nombre }}</h2>
+  <a href="{{ url_for('proyectos.etapas_lista', proyecto_id=etapa.proyecto_id) }}"
+     class="btn btn-outline-secondary px-4">
+    Volver a Etapas
+  </a>
+</div>
+
+<!-- ===========================
+      INFO GENERAL
+=========================== -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h4 class="mb-3">Información General</h4>
+
+    <div class="row">
+      <div class="col-md-6">
+        <p><strong>Proyecto:</strong> {{ etapa.proyecto.nombre }}</p>
+        <p><strong>Nombre:</strong> {{ etapa.nombre }}</p>
+      </div>
+      <div class="col-md-6">
+        <p><strong>Mantenimiento mensual:</strong>
+          RD$ {{ "%.2f"|format(etapa.monto_mantenimiento) }}</p>
+        <p><strong>Unidades:</strong> {{ pagination.total if pagination else unidades|length }}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===========================
+      FILTRO DE TIEMPO
+=========================== -->
+<form method="get" class="row g-3 mb-4">
+
+  <div class="col-md-4">
+    <label class="form-label">Mes inicio</label>
+    <input type="month" name="inicio" class="form-control"
+           value="{{ mes_inicio or '' }}">
+  </div>
+
+  <div class="col-md-4">
+    <label class="form-label">Mes fin</label>
+    <input type="month" name="fin" class="form-control"
+           value="{{ mes_fin or '' }}">
+  </div>
+
+  <div class="col-md-4 d-flex align-items-end">
+    <button class="btn btn-primary w-100">Filtrar</button>
+  </div>
+
+</form>
+
+<!-- ===========================
+      MÉTRICAS RÁPIDAS
+=========================== -->
+<div class="row mb-4">
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-primary text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Total Generado</h6>
+        <h3 class="text-primary fw-bold">RD$ {{ "%.2f"|format(total_cuotas) }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-success text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Total Pagado</h6>
+        <h3 class="text-success fw-bold">RD$ {{ "%.2f"|format(total_pagado) }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-warning text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Pendiente</h6>
+        <h3 class="text-warning fw-bold">RD$ {{ "%.2f"|format(total_pendiente) }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card shadow-sm border-danger text-center">
+      <div class="card-body">
+        <h6 class="text-muted">Morosidad</h6>
+        <h3 class="text-danger fw-bold">RD$ {{ "%.2f"|format(total_moroso) }}</h3>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===========================
+      UNIDADES
+=========================== -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3" style="gap: 1rem;">
+      <h4 class="mb-0">Unidades de la etapa</h4>
+
+      <div class="d-flex flex-column flex-md-row align-items-md-center" style="gap: .75rem;">
+        <form method="GET" class="d-flex" style="gap: .5rem;">
+          {% if mes_inicio %}
+            <input type="hidden" name="inicio" value="{{ mes_inicio }}">
+          {% endif %}
+          {% if mes_fin %}
+            <input type="hidden" name="fin" value="{{ mes_fin }}">
+          {% endif %}
+
+          <input type="text"
+                name="q"
+                id="buscadorUnidades"
+                class="form-control form-control-sm"
+                placeholder="Buscar unidad..."
+                value="{{ q or '' }}">
+
+          <button type="submit" class="btn btn-outline-secondary btn-sm">
+            Buscar
+          </button>
+
+          {% if q %}
+          <a href="{{ url_for('etapas.detalle_etapa', etapa_id=etapa.id, inicio=mes_inicio, fin=mes_fin) }}"
+            class="btn btn-outline-danger btn-sm">
+            Limpiar
+          </a>
+          {% endif %}
+        </form>
+      </div>
+
+        <button
+          onclick="openModal('{{ url_for('unidades.modal_crear_unidad', proyecto_id=etapa.proyecto_id) }}')"
+          class="btn btn-primary btn-sm"
+          type="button">
+          Nueva Unidad
+        </button>
+      </div>
+    </div>
+
+    {% if unidades %}
+      <ul class="list-group" id="listaUnidadesEtapa">
+        {% for u in unidades %}
+          {% set pendientes = u.cuotas | selectattr("estado", "equalto", "Pendiente") | list %}
+          {% set cant_pend = pendientes | length %}
+
+          {% if cant_pend == 0 %}
+            {% set badge_class = "bg-success" %}
+            {% set badge_text = "Al día" %}
+          {% elif cant_pend <= 3 %}
+            {% set badge_class = "bg-warning text-dark" %}
+            {% set badge_text = cant_pend ~ " pendientes" %}
+          {% else %}
+            {% set badge_class = "bg-danger" %}
+            {% set badge_text = cant_pend ~ " pendientes" %}
+          {% endif %}
+
+          {% set relaciones_actuales = u.unidad_personas | selectattr("es_actual", "equalto", True) | list %}
+
+          <li class="list-group-item d-flex justify-content-between align-items-center unidad-item"
+              data-nombre="{{ (u.nombre or '')|lower }}"
+              data-personas="{% for r in relaciones_actuales %}{{ (r.persona.nombre_completo or '')|lower }} {% endfor %}">
+            
+            <div>
+              <strong>{{ u.nombre }}</strong>
+              <span class="badge {{ badge_class }} ms-2">{{ badge_text }}</span><br>
+              <small class="text-muted">Tipo: {{ u.tipo or '-' }}</small><br>
+
+              {% if relaciones_actuales %}
+                <small class="text-muted">
+                  Personas:
+                  {% for r in relaciones_actuales %}
+                    {{ r.persona.nombre_completo }}{% if not loop.last %}, {% endif %}
+                  {% endfor %}
+                </small>
+              {% else %}
+                <small class="text-muted">Sin personas asociadas.</small>
+              {% endif %}
+            </div>
+
+            <a href="{{ url_for('unidades.detalle_unidad', unidad_id=u.id) }}"
+               class="btn btn-outline-primary btn-sm">
+              Ver Unidad
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% if pagination and pagination.pages > 1 %}
+      <nav class="mt-3">
+        <ul class="pagination justify-content-center mb-0">
+
+          <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            {% if pagination.has_prev %}
+              <a class="page-link"
+                 href="{{ url_for('etapas.detalle_etapa',
+                                  etapa_id=etapa.id,
+                                  page=pagination.prev_num,
+                                  inicio=mes_inicio,
+                                  fin=mes_fin) }}">
+                Anterior
+              </a>
+            {% else %}
+              <span class="page-link">Anterior</span>
+            {% endif %}
+          </li>
+
+          {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if p %}
+              <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link"
+                   href="{{ url_for('etapas.detalle_etapa',
+                                    etapa_id=etapa.id,
+                                    page=p,
+                                    inicio=mes_inicio,
+                                    fin=mes_fin) }}">
+                  {{ p }}
+                </a>
+              </li>
+            {% else %}
+              <li class="page-item disabled">
+                <span class="page-link">…</span>
+              </li>
+            {% endif %}
+          {% endfor %}
+
+          <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            {% if pagination.has_next %}
+              <a class="page-link"
+                 href="{{ url_for('etapas.detalle_etapa',
+                                  etapa_id=etapa.id,
+                                  page=pagination.next_num,
+                                  inicio=mes_inicio,
+                                  fin=mes_fin) }}">
+                Siguiente
+              </a>
+            {% else %}
+              <span class="page-link">Siguiente</span>
+            {% endif %}
+          </li>
+
+        </ul>
+      </nav>
+      {% endif %}
+
+    {% else %}
+      <p class="text-muted mb-0">Esta etapa no tiene unidades registradas.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ===========================
+      RESUMEN MENSUAL (ACCORDION)
+=========================== -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h4 class="mb-3">Resumen mensual</h4>
+
+    <div class="accordion" id="accordionAnual">
+
+      {% for anio, meses in resumen_por_anio.items() %}
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="heading{{ anio }}">
+          <button class="accordion-button collapsed" type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapse{{ anio }}">
+            {{ anio }}
+          </button>
+        </h2>
+
+        <div id="collapse{{ anio }}" class="accordion-collapse collapse">
+          <div class="accordion-body">
+
+            <table class="table table-sm table-bordered">
+              <thead class="table-light">
+                <tr>
+                  <th>Mes</th>
+                  <th>Total</th>
+                  <th>Pagado</th>
+                  <th>Pendiente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for mes, info in meses %}
+                <tr>
+                  <td>{{ mes }}</td>
+                  <td>RD$ {{ "%.2f"|format(info.cuotas) }}</td>
+                  <td class="text-success">RD$ {{ "%.2f"|format(info.pagado) }}</td>
+                  <td class="text-danger">RD$ {{ "%.2f"|format(info.pendiente) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if not resumen_por_anio %}
+        <p class="text-muted mb-0">No hay datos en el rango seleccionado.</p>
+      {% endif %}
+
+    </div>
+
+  </div>
+</div>
+
+<script>
+function evitarEnterBuscador(event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        filtrarUnidades();
+        return false;
+    }
+    return true;
+}
+
+function filtrarUnidades() {
+    const input = document.getElementById("buscadorUnidades");
+    const items = document.querySelectorAll("#listaUnidadesEtapa .unidad-item");
+
+    console.log("input:", input);
+    console.log("items encontrados:", items.length);
+
+    if (!input || !items.length) {
+        return;
+    }
+
+    const filtro = input.value.trim().toLowerCase();
+    console.log("filtro:", filtro);
+
+    items.forEach(item => {
+        const nombre = (item.getAttribute("data-nombre") || "").toLowerCase();
+        const personas = (item.getAttribute("data-personas") || "").toLowerCase();
+
+        console.log("comparando con:", nombre, personas);
+
+        const coincide =
+            filtro === "" ||
+            nombre.includes(filtro) ||
+            personas.includes(filtro);
+
+        item.style.display = coincide ? "flex" : "none";
+    });
+}
+</script>
+
+{% endblock %}

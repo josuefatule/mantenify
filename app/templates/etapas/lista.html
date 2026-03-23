@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 class="mb-4 text-center">Etapas de {{ proyecto.nombre }}</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-4" style="gap: 1rem;">
+
+    <button class="btn btn-primary px-4"
+            onclick="openModal('{{ url_for('proyectos.modal_crear_etapa', proyecto_id=proyecto.id) }}')">
+        Nueva Etapa
+    </button>
+
+    <a href="{{ url_for('reportes.reporte_proyecto', proyecto_id=proyecto.id) }}"
+       class="btn btn-success px-4">
+        Reporte Financiero
+    </a>
+
+    <a href="{{ url_for('proyectos.lista_proyectos') }}"
+       class="btn btn-secondary px-4">
+        &#8592; Proyectos
+    </a>
+
+</div>
+
+
+<div class="container">
+  <div class="row">
+
+    {% for e in etapas %}
+
+    {% set ocupadas = e.unidades | selectattr("esta_ocupada") | list | length %}
+    {% set vacias = e.unidades|length - ocupadas %}
+
+    <div class="col-md-4 mb-4">
+      <div class="card etapa-card shadow-sm" onclick="toggleEtapaCard(this)">
+        <div class="card-body">
+
+          <!-- NORMAL MODE INFO -->
+          <div class="etapa-info text-center">
+            
+            <h5 class="fw-bold mb-1">{{ e.nombre }}</h5>
+
+            <p class="text-muted small mb-2">
+              {{ e.descripcion or "Sin descripción" }}
+            </p>
+
+            <div class="mt-3">
+              <span class="badge bg-primary">{{ e.unidades|length }} unidades</span>
+            </div>
+
+            <div class="mt-2 small">
+              <span class="text-success fw-bold">{{ ocupadas }}</span> ocupadas<br>
+              <span class="text-danger fw-bold">{{ vacias }}</span> vacías
+            </div>
+
+          </div>
+
+          <!-- EXPANDED MODE ACTIONS -->
+          <div class="etapa-actions text-center">
+            <h5 class="fw-bold mb-3">{{ e.nombre }}</h5>
+
+            <a href="{{ url_for('etapas.detalle_etapa', etapa_id=e.id) }}"
+               class="btn btn-outline-primary w-100 mb-2"
+               onclick="event.stopPropagation();">
+              Ver
+            </a>
+
+            <button class="btn btn-outline-warning w-100 mb-2"
+                    onclick="event.stopPropagation(); openModal('{{ url_for('proyectos.modal_editar_etapa', proyecto_id=proyecto.id, etapa_id=e.id) }}')">
+              Editar
+            </button>
+
+            <form method="POST"
+                  action="{{ url_for('proyectos.eliminar_etapa', proyecto_id=proyecto.id, etapa_id=e.id) }}"
+                  onclick="event.stopPropagation();"
+                  onsubmit="return confirm('¿Eliminar esta etapa?');">
+              <button class="btn btn-outline-danger w-100">Eliminar</button>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    {% endfor %}
+
+  </div>
+</div>
+
+<!-- CARD ANIMATION LOGIC -->
+<script>
+let lastExpandedCard = null;
+
+function toggleEtapaCard(card) {
+
+    // Cerrar anterior si existe
+    if (lastExpandedCard && lastExpandedCard !== card) {
+        lastExpandedCard.classList.remove("expanded");
+    }
+
+    // Alternar el estado del card actual
+    card.classList.toggle("expanded");
+
+    // Guardar card actual como el último expandido
+    lastExpandedCard = card.classList.contains("expanded") ? card : null;
+}
+</script>
+
+<style>
+/* --- CARD BASE STYLE --- */
+.etapa-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border-radius: 12px;
+}
+.etapa-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+}
+
+/* --- MODO EXPANDIDO --- */
+.etapa-card.expanded {
+    transform: scale(1.03);
+    z-index: 5;
+    background: #f8f9fa;
+    border: 2px solid #0d6efd;
+}
+
+.etapa-card.expanded .card-body {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 270px;
+}
+
+/* OCULTAR INFO */
+.etapa-card.expanded .etapa-info {
+    display: none !important;
+}
+
+/* ACCIONES */
+.etapa-actions {
+    display: none;
+    width: 70%;
+}
+.etapa-card.expanded .etapa-actions {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+}
+</style>
+
+{% endblock %}

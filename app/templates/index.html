@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h2 class="mb-4">Dashboard</h2>
+
+<div class="row g-4">
+
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Solicitudes abiertas</h5>
+        <p class="display-5 fw-bold text-primary">{{ solicitudes_abiertas }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">OT en proceso</h5>
+        <p class="display-5 fw-bold text-warning">{{ ot_en_proceso }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">OT completadas</h5>
+        <p class="display-5 fw-bold text-success">{{ ot_completadas }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Cuotas pendientes</h5>
+        <p class="display-5 fw-bold text-danger">{{ cuotas_pendientes }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title">Cuotas pagadas este mes</h5>
+        <p class="display-5 fw-bold text-success">{{ cuotas_pagadas_mes }}</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

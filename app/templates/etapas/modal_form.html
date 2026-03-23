@@ -1,0 +1,39 @@
+<div class="modal-header">
+  <h5 class="modal-title">
+    {{ "Editar Etapa" if etapa else "Nueva Etapa" }}
+  </h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('proyectos.editar_etapa', proyecto_id=proyecto.id, etapa_id=etapa.id) if etapa 
+                  else url_for('proyectos.crear_etapa', proyecto_id=proyecto.id) }}"
+      onsubmit="submitForm(event, this)">
+
+<div class="modal-body">
+
+    <div class="mb-3">
+        <label>Nombre</label>
+        <input type="text" name="nombre" class="form-control"
+               value="{{ etapa.nombre if etapa else '' }}" required>
+    </div>
+
+    <div class="mb-3">
+        <label>Descripción</label>
+        <textarea name="descripcion" class="form-control">{{ etapa.descripcion if etapa else '' }}</textarea>
+    </div>
+
+    <div class="mb-3">
+        <label>Monto mensual de mantenimiento</label>
+        <input type="number" step="0.01" min="0" name="monto_mantenimiento" class="form-control"
+               value="{{ etapa.monto_mantenimiento if etapa else '' }}" required>
+        <small class="text-muted">Monto que pagarán todas las unidades de esta etapa cada mes.</small>
+    </div>
+
+</div>
+
+<div class="modal-footer">
+    <button class="btn btn-primary">Guardar</button>
+</div>
+
+</form>

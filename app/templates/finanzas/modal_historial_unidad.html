@@ -1,0 +1,54 @@
+<div class="modal-header">
+    <h5 class="modal-title">Historial de cuotas de la unidad {{ unidad.nombre }}</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<div class="modal-body">
+
+    <p>
+        <strong>Proyecto:</strong> {{ unidad.etapa.proyecto.nombre }} <br>
+        <strong>Etapa:</strong> {{ unidad.etapa.nombre }} <br>
+        <strong>Unidad:</strong> {{ unidad.nombre }}
+    </p>
+
+    {% if cuotas %}
+    <table class="table table-sm table-bordered">
+        <thead class="table-light">
+            <tr>
+                <th>Periodo</th>
+                <th>Monto</th>
+                <th>Estado</th>
+                <th>Fecha pago</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for c in cuotas %}
+            <tr>
+                <td>{{ c.periodo.strftime('%Y-%m') }}</td>
+                <td>RD$ {{ "%.2f"|format(c.monto) }}</td>
+                <td>
+                    {% if c.estado == "Pendiente" %}
+                        <span class="badge bg-warning text-dark">Pendiente</span>
+                    {% else %}
+                        <span class="badge bg-success">Pagado</span>
+                    {% endif %}
+                </td>
+                <td>{{ c.fecha_pago.strftime('%Y-%m-%d') if c.fecha_pago else "—" }}</td>
+
+                <td>
+                    <button class="btn btn-sm btn-info"
+                            onclick="openModal('{{ url_for('finanzas.modal_ver_cuota', cuota_id=c.id) }}')">
+                        Ver
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% else %}
+    <p class="text-muted">No hay cuotas generadas para esta unidad.</p>
+    {% endif %}
+</div>

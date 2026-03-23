@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Persona: {{ persona.nombre_completo }}</h2>
+
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+    <h4 class="mb-3">Información general</h4>
+
+    <p><strong>Identificación:</strong> {{ persona.identificacion or "—" }}</p>
+    <p><strong>Correo:</strong> {{ persona.email or "—" }}</p>
+    <p><strong>Teléfono:</strong> {{ persona.telefono or "—" }}</p>
+    <p><strong>Dirección:</strong> {{ persona.direccion or "—" }}</p>
+
+    <p><strong>Estado:</strong>
+      {% if persona.activo %}
+        <span class="badge bg-success">Activo</span>
+      {% else %}
+        <span class="badge bg-secondary">Inactivo</span>
+      {% endif %}
+    </p>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- RELACIONES ACTUALES -->
+<!-- ========================================= -->
+<div class="card mb-4 shadow-sm">
+  <div class="card-body">
+
+    <h4 class="mb-3">Relaciones actuales</h4>
+
+    <button class="btn btn-primary btn-sm float-end mb-3"
+            onclick="openModal('{{ url_for('personas.modal_asociar_desde_persona', persona_id=persona.id) }}')">
+      Asociar a una unidad
+    </button>
+
+    {% if relaciones_actuales %}
+      <table class="table table-bordered table-sm">
+        <thead class="table-light">
+          <tr>
+            <th>Proyecto</th>
+            <th>Unidad</th>
+            <th>Rol</th>
+            <th>Principal</th>
+            <th>Desde</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for r in relaciones_actuales %}
+          <tr>
+            <td>{{ r.unidad.proyecto.nombre }}</td>
+            <td>{{ r.unidad.nombre }}</td>
+            <td>
+              {% if r.es_propietario %}
+                <span class="badge bg-primary">Propietario</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Inquilino</span>
+              {% endif %}
+            </td>
+            <td>{{ "Sí" if r.es_principal else "No" }}</td>
+            <td>{{ r.fecha_desde }}</td>
+            <td>
+              <a href="{{ url_for('unidades.detalle_unidad', unidad_id=r.unidad_id) }}"
+                 class="btn btn-info btn-sm mb-1">Ver unidad</a>
+
+              <form method="POST"
+                    action="{{ url_for('personas.desactivar_relacion', rel_id=r.id) }}"
+                    onsubmit="return confirm('¿Desactivar esta relación?');"
+                    style="display:inline-block">
+                <button class="btn btn-danger btn-sm">Desactivar</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+    {% else %}
+      <p class="text-muted">Esta persona no está asociada a ninguna unidad actualmente.</p>
+    {% endif %}
+
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- HISTÓRICO -->
+<!-- ========================================= -->
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+
+    <h4 class="mb-3">Histórico de relaciones</h4>
+
+    {% if relaciones_pasadas %}
+      <table class="table table-sm table-bordered">
+        <thead class="table-light">
+          <tr>
+            <th>Proyecto</th>
+            <th>Unidad</th>
+            <th>Rol</th>
+            <th>Principal</th>
+            <th>Desde</th>
+            <th>Hasta</th>
+            {% if current_user.is_admin() %}
+              <th>Acciones</th>
+            {% endif %}
+          </tr>
+        </thead>
+
+        <tbody>
+        {% for r in relaciones_pasadas %}
+          <tr>
+            <td>{{ r.unidad.proyecto.nombre }}</td>
+            <td>{{ r.unidad.nombre }}</td>
+
+            <td>
+              {% if r.es_propietario %}
+                <span class="badge bg-primary">Propietario</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">Inquilino</span>
+              {% endif %}
+            </td>
+
+            <td>{{ "Sí" if r.es_principal else "No" }}</td>
+
+            <td>{{ r.fecha_desde }}</td>
+            <td>{{ r.fecha_hasta }}</td>
+
+            {% if current_user.is_admin() %}
+              <td>
+                <form method="POST"
+                      action="{{ url_for('personas.borrar_relacion', rel_id=r.id) }}"
+                      onsubmit="return confirm('¿Eliminar esta relación del historial?');">
+                  <button class="btn btn-danger btn-sm">Eliminar</button>
+                </form>
+              </td>
+            {% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+    {% else %}
+      <p class="text-muted">No hay historial de relaciones.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

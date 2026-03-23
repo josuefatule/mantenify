@@ -1,0 +1,50 @@
+<div class="modal-header">
+    <h5 class="modal-title">
+        {{ "Editar Persona" if persona else "Nueva Persona" }}
+    </h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('personas.editar_persona', persona_id=persona.id) if persona 
+                 else url_for('personas.crear_persona') }}"
+      onsubmit="submitForm(event, this)">
+
+    <div class="modal-body">
+
+        <div class="mb-3">
+            <label>Nombre Completo</label>
+            <input type="text" name="nombre_completo" class="form-control" required
+                   value="{{ persona.nombre_completo if persona else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Email</label>
+            <input type="email" name="email" class="form-control"
+                   value="{{ persona.email if persona else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Teléfono</label>
+            <input type="text" name="telefono" class="form-control"
+                   value="{{ persona.telefono if persona else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Identificación</label>
+            <input type="text" name="identificacion" class="form-control"
+                   value="{{ persona.identificacion if persona else '' }}">
+        </div>
+
+        <div class="mb-3">
+            <label>Dirección</label>
+            <textarea name="direccion" class="form-control" rows="3">{{ persona.direccion if persona else '' }}</textarea>
+        </div>
+
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary">Guardar</button>
+    </div>
+
+</form>

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Órdenes | Mantenify{% endblock %}
+
+{% block content %}
+
+<h2 class="mb-4">Mis Órdenes de Trabajo</h2>
+
+{% if ordenes|length == 0 %}
+    <div class="alert alert-info">
+        No tienes órdenes asignadas actualmente.
+    </div>
+{% else %}
+
+<table class="table table-bordered align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>ID</th>
+            <th>Solicitud</th>
+            <th>Proyecto</th>
+            <th>Unidad</th>
+            <th>Estado</th>
+            <th>Asignación</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for ot in ordenes %}
+        <tr>
+            <td>#{{ ot.id }}</td>
+
+            <td>
+                <a href="{{ url_for('solicitudes.detalle_solicitud', solicitud_id=ot.solicitud.id) }}">
+                    {{ ot.solicitud.titulo }}
+                </a>
+            </td>
+
+            <td>{{ ot.solicitud.proyecto_rel.nombre }}</td>
+            <td>{{ ot.solicitud.unidad_rel.nombre }}</td>
+
+            <td>
+                <span class="badge
+                    {% if ot.estado == 'asignada' %}bg-secondary
+                    {% elif ot.estado == 'en_proceso' %}bg-info
+                    {% else %}bg-success{% endif %}">
+                    {{ ot.estado }}
+                </span>
+            </td>
+
+            <td>{{ ot.fecha_asignacion.strftime('%d-%m-%Y %H:%M') }}</td>
+
+            <td>
+                <a class="btn btn-sm btn-primary"
+                   href="{{ url_for('ordenes.detalle_ot', ot_id=ot.id) }}">
+                    Ver
+                </a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% endif %}
+
+{% endblock %}

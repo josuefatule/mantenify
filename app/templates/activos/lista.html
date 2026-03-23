@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-3">Activos en la Unidad: {{ unidad.nombre }}</h2>
+
+<button 
+    onclick="openModal('{{ url_for('activos.modal_crear_activo', unidad_id=unidad.id) }}')" 
+    class="btn btn-primary mb-3">
+    Nuevo Activo
+</button>
+
+<a href="{{ url_for('unidades.lista_unidades', proyecto_id=unidad.proyecto_id) }}" 
+   class="btn btn-secondary mb-3">
+    ← Volver a Unidades
+</a>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Tipo</th>
+            <th>Descripción</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in activos %}
+        <tr>
+            <td>{{ a.nombre }}</td>
+            <td>{{ a.tipo or '-' }}</td>
+            <td>{{ a.descripcion or '-' }}</td>
+            <td>
+                <button 
+                    class="btn btn-sm btn-warning"
+                    onclick="openModal('{{ url_for('activos.modal_editar_activo', activo_id=a.id) }}')">
+                    Editar
+                </button>
+
+                <form method="post"
+                      action="{{ url_for('activos.eliminar_activo', activo_id=a.id) }}"
+                      style="display:inline-block"
+                      onsubmit="return confirm('¿Eliminar este activo?');">
+                    <button class="btn btn-sm btn-danger">Eliminar</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
