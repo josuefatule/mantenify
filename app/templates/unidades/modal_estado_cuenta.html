@@ -1,0 +1,33 @@
+<div class="modal-header">
+  <h5 class="modal-title">Generar Estado de Cuenta</h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+</div>
+
+<form method="GET"
+      action="{{ url_for('unidades.generar_estado_cuenta_pdf', unidad_id=unidad.id) }}"
+      target="_blank">
+  <div class="modal-body">
+    <p class="mb-3">
+      <strong>Unidad:</strong> {{ unidad.nombre }}
+    </p>
+
+    <div class="mb-3">
+      <label for="desde" class="form-label">Desde</label>
+      <input type="date" class="form-control" id="desde" name="desde" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="hasta" class="form-label">Hasta</label>
+      <input type="date" class="form-control" id="hasta" name="hasta" required>
+    </div>
+
+    <div class="alert alert-light border small mb-0">
+      El reporte incluirá las cuotas cuyo <strong>periodo</strong> esté dentro del rango seleccionado.
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    <button type="submit" class="btn btn-primary">Generar PDF</button>
+  </div>
+</form>

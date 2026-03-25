@@ -1,9 +1,205 @@
-from flask import render_template, redirect, url_for, request, flash
+from flask import render_template, redirect, url_for, request, flash, make_response
 from flask_login import login_required
 from app import db
-from app.models import Unidad, Proyecto, Etapa, Solicitud, CuotaMantenimiento
+from app.models import Unidad, Proyecto, Etapa, Solicitud, CuotaMantenimiento, RegistroPago
 from . import unidades_bp
 from app.utils.decorators import require_admin
+
+from datetime import datetime
+from decimal import Decimal
+from io import BytesIO
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+)
+
+# ////////////////////////////////// Funciones ////////////////
+
+def _parse_fecha(fecha_str):
+    try:
+        return datetime.strptime(fecha_str, "%Y-%m-%d").date()
+    except (TypeError, ValueError):
+        return None
+
+
+def _obtener_cliente_principal(unidad):
+    """
+    Busca primero propietario principal actual.
+    Si no existe, toma cualquier propietario actual.
+    Si tampoco, toma cualquier persona actual.
+    """
+    relaciones_actuales = [r for r in unidad.unidad_personas if r.es_actual]
+
+    propietario_principal = next(
+        (r for r in relaciones_actuales if r.es_propietario and r.es_principal),
+        None
+    )
+    if propietario_principal:
+        return propietario_principal.persona.nombre_completo
+
+    propietario = next(
+        (r for r in relaciones_actuales if r.es_propietario),
+        None
+    )
+    if propietario:
+        return propietario.persona.nombre_completo
+
+    persona_actual = next(iter(relaciones_actuales), None)
+    if persona_actual:
+        return persona_actual.persona.nombre_completo
+
+    return "No asignado"
+
+
+def _decimal(valor):
+    if valor is None:
+        return Decimal("0.00")
+    if isinstance(valor, Decimal):
+        return valor
+    return Decimal(str(valor))
+
+
+def _build_estado_cuenta_pdf(unidad, proyecto, etapa, cliente_nombre, fecha_desde, fecha_hasta, cuotas):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=1.5 * cm,
+        leftMargin=1.5 * cm,
+        topMargin=1.5 * cm,
+        bottomMargin=1.5 * cm,
+    )
+
+    styles = getSampleStyleSheet()
+    elementos = []
+
+    total_facturado = sum((_decimal(c.monto) for c in cuotas), Decimal("0.00"))
+    total_pagado = sum(
+        (_decimal(c.pago.monto_pagado) if c.pago else Decimal("0.00") for c in cuotas if c.estado == "Pagado"),
+        Decimal("0.00")
+    )
+    total_pendiente = sum(
+        (_decimal(c.monto) for c in cuotas if c.estado != "Pagado"),
+        Decimal("0.00")
+    )
+
+    cantidad_pagadas = sum(1 for c in cuotas if c.estado == "Pagado")
+    cantidad_pendientes = sum(1 for c in cuotas if c.estado != "Pagado")
+
+    # Encabezado
+    elementos.append(Paragraph("Estado de Cuenta", styles["Title"]))
+    elementos.append(Spacer(1, 0.3 * cm))
+
+    info = [
+        ["Proyecto:", proyecto.nombre],
+        ["Etapa:", etapa.nombre if etapa else "Sin etapa"],
+        ["Unidad:", unidad.nombre],
+        ["Cliente:", cliente_nombre],
+        ["Rango:", f"{fecha_desde.strftime('%d/%m/%Y')} al {fecha_hasta.strftime('%d/%m/%Y')}"],
+        ["Generado:", datetime.now().strftime("%d/%m/%Y %I:%M %p")],
+    ]
+
+    tabla_info = Table(info, colWidths=[3.2 * cm, 12.8 * cm])
+    tabla_info.setStyle(TableStyle([
+        ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elementos.append(tabla_info)
+    elementos.append(Spacer(1, 0.5 * cm))
+
+    # Resumen
+    elementos.append(Paragraph("Resumen", styles["Heading2"]))
+
+    resumen_data = [
+        ["Total facturado", f"RD$ {total_facturado:,.2f}"],
+        ["Total pagado", f"RD$ {total_pagado:,.2f}"],
+        ["Total pendiente", f"RD$ {total_pendiente:,.2f}"],
+        ["Cuotas pagadas", str(cantidad_pagadas)],
+        ["Cuotas pendientes", str(cantidad_pendientes)],
+    ]
+
+    tabla_resumen = Table(resumen_data, colWidths=[6.5 * cm, 4.0 * cm])
+    tabla_resumen.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("FONTSIZE", (0, 0), (-1, -1), 10),
+        ("PADDING", (0, 0), (-1, -1), 6),
+    ]))
+    elementos.append(tabla_resumen)
+    elementos.append(Spacer(1, 0.5 * cm))
+
+    # Detalle
+    elementos.append(Paragraph("Detalle de cuotas", styles["Heading2"]))
+
+    detalle_data = [[
+        "Periodo", "Monto", "Estado", "Fecha pago", "Método", "Referencia"
+    ]]
+
+    for c in cuotas:
+        fecha_pago = ""
+        metodo_pago = ""
+        referencia = ""
+
+        if c.pago:
+            fecha_pago = c.pago.fecha_pago.strftime("%d/%m/%Y") if c.pago.fecha_pago else ""
+            metodo_pago = c.pago.metodo_pago or ""
+            referencia = c.pago.referencia or ""
+        elif c.fecha_pago:
+            fecha_pago = c.fecha_pago.strftime("%d/%m/%Y")
+
+        detalle_data.append([
+            c.periodo.strftime("%Y-%m"),
+            f"RD$ {_decimal(c.monto):,.2f}",
+            c.estado,
+            fecha_pago,
+            metodo_pago,
+            referencia,
+        ])
+
+    if len(detalle_data) == 1:
+        detalle_data.append(["Sin datos", "", "", "", "", ""])
+
+    tabla_detalle = Table(
+        detalle_data,
+        colWidths=[2.2 * cm, 2.8 * cm, 2.3 * cm, 2.6 * cm, 2.8 * cm, 3.3 * cm]
+    )
+    tabla_detalle.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#EAEAEA")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("PADDING", (0, 0), (-1, -1), 5),
+    ]))
+
+    # Colorear estado
+    for idx, c in enumerate(cuotas, start=1):
+        if c.estado == "Pagado":
+            tabla_detalle.setStyle(TableStyle([
+                ("TEXTCOLOR", (2, idx), (2, idx), colors.green),
+                ("FONTNAME", (2, idx), (2, idx), "Helvetica-Bold"),
+            ]))
+        else:
+            tabla_detalle.setStyle(TableStyle([
+                ("TEXTCOLOR", (2, idx), (2, idx), colors.red),
+                ("FONTNAME", (2, idx), (2, idx), "Helvetica-Bold"),
+            ]))
+
+    elementos.append(tabla_detalle)
+
+    doc.build(elementos)
+    pdf = buffer.getvalue()
+    buffer.close()
+    return pdf
+
+# /////////////////////////////////////////////////////////////
 
 # LISTAR UNIDADES DE UN PROYECTO ----------------------
 @unidades_bp.route("/proyectos/<int:proyecto_id>/unidades")
@@ -314,3 +510,62 @@ def crear_unidades_masivas(proyecto_id):
 
     flash(mensaje, "success")
     return redirect(url_for("unidades.lista_unidades", proyecto_id=proyecto_id))
+
+# //////////////////////////////////////////////////////////////////////////
+
+@unidades_bp.route("/unidades/<int:unidad_id>/modal-estado-cuenta")
+@login_required
+def modal_estado_cuenta_unidad(unidad_id):
+    unidad = Unidad.query.get_or_404(unidad_id)
+    return render_template("unidades/modal_estado_cuenta.html", unidad=unidad)
+
+@unidades_bp.route("/unidades/<int:unidad_id>/estado-cuenta/pdf", methods=["GET"])
+@login_required
+def generar_estado_cuenta_pdf(unidad_id):
+    unidad = Unidad.query.get_or_404(unidad_id)
+    proyecto = unidad.proyecto
+    etapa = unidad.etapa
+
+    fecha_desde = _parse_fecha(request.args.get("desde"))
+    fecha_hasta = _parse_fecha(request.args.get("hasta"))
+
+    if not fecha_desde or not fecha_hasta:
+        flash("Debe seleccionar ambas fechas.", "danger")
+        return redirect(url_for("unidades.detalle_unidad", unidad_id=unidad.id))
+
+    if fecha_desde > fecha_hasta:
+        flash("La fecha 'desde' no puede ser mayor que la fecha 'hasta'.", "danger")
+        return redirect(url_for("unidades.detalle_unidad", unidad_id=unidad.id))
+
+    cuotas = (
+        CuotaMantenimiento.query
+        .filter(
+            CuotaMantenimiento.unidad_id == unidad.id,
+            CuotaMantenimiento.periodo >= fecha_desde,
+            CuotaMantenimiento.periodo <= fecha_hasta
+        )
+        .order_by(CuotaMantenimiento.periodo.asc())
+        .all()
+    )
+
+    cliente_nombre = _obtener_cliente_principal(unidad)
+
+    pdf = _build_estado_cuenta_pdf(
+        unidad=unidad,
+        proyecto=proyecto,
+        etapa=etapa,
+        cliente_nombre=cliente_nombre,
+        fecha_desde=fecha_desde,
+        fecha_hasta=fecha_hasta,
+        cuotas=cuotas
+    )
+
+    nombre_archivo = (
+        f"estado_cuenta_{unidad.nombre}_"
+        f"{fecha_desde.strftime('%Y%m%d')}_{fecha_hasta.strftime('%Y%m%d')}.pdf"
+    ).replace(" ", "_")
+
+    response = make_response(pdf)
+    response.headers["Content-Type"] = "application/pdf"
+    response.headers["Content-Disposition"] = f"inline; filename={nombre_archivo}"
+    return response

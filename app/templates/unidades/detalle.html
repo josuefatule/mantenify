@@ -42,10 +42,18 @@
 
     <h4 class="mb-3">
       Finanzas de la Unidad
-      <button class="btn btn-outline-primary btn-sm float-end"
-              onclick="openModal('{{ url_for('finanzas.modal_historial_unidad', unidad_id=unidad.id) }}')">
-        Ver historial completo
-      </button>
+
+      <div class="float-end d-flex gap-2">
+        <button class="btn btn-outline-dark btn-sm"
+                onclick="openModal('{{ url_for('unidades.modal_estado_cuenta_unidad', unidad_id=unidad.id) }}')">
+          Estado de cuenta PDF
+        </button>
+
+        <button class="btn btn-outline-primary btn-sm"
+                onclick="openModal('{{ url_for('finanzas.modal_historial_unidad', unidad_id=unidad.id) }}')">
+          Ver historial completo
+        </button>
+      </div>
     </h4>
 
     <!-- RESUMEN -->
