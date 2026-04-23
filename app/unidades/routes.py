@@ -91,6 +91,43 @@ def _build_estado_cuenta_pdf(unidad, proyecto, etapa, cliente_nombre, fecha_desd
     cantidad_pagadas = sum(1 for c in cuotas if c.estado == "Pagado")
     cantidad_pendientes = sum(1 for c in cuotas if c.estado != "Pagado")
 
+    # Header con logos
+    try:
+        import os
+        from reportlab.platypus import Image
+
+        base_dir = os.path.abspath(os.path.dirname(__file__))
+        img_dir = os.path.abspath(os.path.join(base_dir, "..", "static", "img"))
+
+        company_path = os.path.join(img_dir, "company.png")
+        project_path = os.path.join(img_dir, "project.png")
+
+        logo_height = 100  # puntos
+
+        company_img = Image(company_path, height=logo_height, width=logo_height, kind='proportional')
+        project_img = Image(project_path, height=logo_height, width=logo_height, kind='proportional')
+
+        tabla_header = Table(
+            [[company_img, project_img]],
+            colWidths=[(doc.width / 2), (doc.width / 2)]
+        )
+        tabla_header.setStyle(TableStyle([
+            ("ALIGN", (0, 0), (0, 0), "LEFT"),
+            ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 0),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+            ("TOPPADDING", (0, 0), (-1, -1), 0),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
+        ]))
+
+        elementos.append(tabla_header)
+        elementos.append(Spacer(1, 0.3 * cm))
+
+    except Exception:
+        # Si falla la carga de imágenes, no detenemos la generación del PDF
+        pass
+
     # Encabezado
     elementos.append(Paragraph("Estado de Cuenta", styles["Title"]))
     elementos.append(Spacer(1, 0.3 * cm))
@@ -101,7 +138,7 @@ def _build_estado_cuenta_pdf(unidad, proyecto, etapa, cliente_nombre, fecha_desd
         ["Unidad:", unidad.nombre],
         ["Cliente:", cliente_nombre],
         ["Rango:", f"{fecha_desde.strftime('%d/%m/%Y')} al {fecha_hasta.strftime('%d/%m/%Y')}"],
-        ["Generado:", datetime.now().strftime("%d/%m/%Y %I:%M %p")],
+        ["Generado el:", datetime.now().strftime("%d/%m/%Y %I:%M %p")],
     ]
 
     tabla_info = Table(info, colWidths=[3.2 * cm, 12.8 * cm])

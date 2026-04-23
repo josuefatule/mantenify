@@ -4,9 +4,8 @@
 </div>
 
 <form method="POST"
-      action="{{ url_for('finanzas.pagar_cuota', cuota_id=cuota.id) }}"
-      onsubmit="submitForm(event, this)">
-
+      action="{{ url_for('finanzas.pagar_cuota', cuota_id=cuota.id) }}">
+    <input type="hidden" name="unidad_id" value="{{ unidad_id }}">
     <div class="modal-body">
 
         <p><strong>Unidad:</strong> {{ cuota.unidad.nombre }}</p>

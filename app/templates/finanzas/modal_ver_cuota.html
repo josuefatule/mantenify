@@ -39,9 +39,9 @@
 
   {% if cuota.estado != "Pagado" %}
   <button class="btn btn-success"
-          onclick="openModal('{{ url_for('finanzas.modal_pagar_cuota', cuota_id=cuota.id) }}')">
-    Registrar Pago
-  </button>
+        onclick="openModal('{{ url_for('finanzas.modal_pagar_cuota', cuota_id=cuota.id, unidad_id=cuota.unidad.id) }}')">
+  Registrar Pago
+</button>
   {% endif %}
 
   <button class="btn btn-warning"

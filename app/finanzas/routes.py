@@ -3,7 +3,7 @@ from datetime import datetime, date
 
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
-
+from app.models import Unidad, UnidadPersona, CuotaMantenimiento
 from app import db
 from app.models import (
     Proyecto,
@@ -13,6 +13,7 @@ from app.models import (
 )
 from app.utils.decorators import require_admin
 from . import finanzas_bp
+from decimal import Decimal, InvalidOperation
 
 def get_resumen_unidad(unidad):
     """Devuelve un pequeño resumen financiero para una unidad."""
@@ -102,6 +103,83 @@ def lista_cuotas():
         filtro_mes=mes,
     )
 
+@finanzas_bp.route("/cuota/modal/individual")
+@login_required
+@require_admin
+def modal_cuota_individual():
+    hoy = datetime.utcnow()
+
+    # ⚠️ Aquí hay una decisión importante:
+    # ¿solo unidades ocupadas o todas?
+    unidades = (
+        Unidad.query
+        .join(UnidadPersona, UnidadPersona.unidad_id == Unidad.id)
+        .filter(UnidadPersona.es_actual.is_(True))
+        .distinct()
+        .order_by(Unidad.nombre)
+        .all()
+    )
+
+    return render_template(
+        "finanzas/modal_individual.html",
+        unidades=unidades,
+        fecha_hoy=hoy
+    )
+
+@finanzas_bp.route("/cuota/crear", methods=["POST"])
+@login_required
+@require_admin
+def crear_cuota_individual():
+
+    unidad_id = request.form.get("unidad_id", type=int)
+    mes = request.form.get("mes")
+    monto = request.form.get("monto")
+
+    if not (unidad_id and mes and monto):
+        flash("Todos los campos son obligatorios.", "warning")
+        return redirect(url_for("finanzas.lista_cuotas"))
+
+    try:
+        year, month = map(int, mes.split("-"))
+        periodo = date(year, month, 1)
+    except Exception:
+        flash("Mes inválido.", "warning")
+        return redirect(url_for("finanzas.lista_cuotas"))
+
+    try:
+        monto_decimal = Decimal(monto)
+        if monto_decimal < 0:
+            raise ValueError
+    except (InvalidOperation, ValueError):
+        flash("Monto inválido.", "warning")
+        return redirect(url_for("finanzas.lista_cuotas"))
+
+    # Validar existencia de unidad
+    unidad = Unidad.query.get_or_404(unidad_id)
+
+    # ⚠️ Validación crítica: evitar duplicados
+    existe = CuotaMantenimiento.query.filter_by(
+        unidad_id=unidad_id,
+        periodo=periodo
+    ).first()
+
+    if existe:
+        flash("Ya existe una cuota para esa unidad en ese mes.", "warning")
+        return redirect(url_for("finanzas.lista_cuotas"))
+
+    cuota = CuotaMantenimiento(
+        unidad_id=unidad_id,
+        periodo=periodo,
+        monto=monto_decimal,
+        estado="Pendiente",
+        fecha_creacion=datetime.utcnow(),
+    )
+
+    db.session.add(cuota)
+    db.session.commit()
+
+    flash("Cuota creada correctamente.", "success")
+    return redirect(url_for("finanzas.lista_cuotas"))
 
 # ====================================
 # MODAL PARA CREAR CUOTAS MASIVAS
@@ -128,7 +206,7 @@ def modal_cuota_masiva():
 def crear_cuotas_masivas():
     proyecto_id = request.form.get("proyecto_id", type=int)
     etapa_id = request.form.get("etapa_id", type=int)
-    mes = request.form.get("mes")  # YYYY-MM
+    mes = request.form.get("mes")  # formato YYYY-MM
     monto = request.form.get("monto")
 
     if not (proyecto_id and etapa_id and mes and monto):
@@ -144,22 +222,32 @@ def crear_cuotas_masivas():
 
     try:
         monto_decimal = float(monto)
+        if monto_decimal < 0:
+            raise ValueError
     except Exception:
         flash("Monto inválido.", "warning")
         return redirect(url_for("finanzas.lista_cuotas"))
 
-    # Todas las unidades de esa etapa
-    unidades = Unidad.query.filter_by(etapa_id=etapa_id).all()
+    # Solo unidades de esa etapa que tengan una relación actual
+    unidades = (
+        Unidad.query
+        .join(UnidadPersona, UnidadPersona.unidad_id == Unidad.id)
+        .filter(
+            Unidad.etapa_id == etapa_id,
+            UnidadPersona.es_actual.is_(True)
+        )
+        .distinct()
+        .all()
+    )
 
     if not unidades:
-        flash("La etapa seleccionada no tiene unidades registradas.", "warning")
+        flash("La etapa seleccionada no tiene unidades ocupadas registradas.", "warning")
         return redirect(url_for("finanzas.lista_cuotas", proyecto=proyecto_id))
 
     creadas = 0
     omitidas = 0
 
     for u in unidades:
-        # ¿Ya existe una cuota de ese periodo para la unidad?
         existe = CuotaMantenimiento.query.filter_by(
             unidad_id=u.id,
             periodo=periodo
@@ -181,9 +269,12 @@ def crear_cuotas_masivas():
 
     db.session.commit()
 
-    flash(f"Cuotas creadas: {creadas}. Unidades omitidas (ya tenían cuota): {omitidas}.", "success")
+    flash(
+        f"Cuotas creadas: {creadas}. "
+        f"Unidades omitidas (ya tenían cuota): {omitidas}.",
+        "success"
+    )
     return redirect(url_for("finanzas.lista_cuotas", proyecto=proyecto_id))
-
 
 # ====================================
 # MODAL EDITAR CUOTA INDIVIDUAL
@@ -263,14 +354,14 @@ def ajax_etapas(proyecto_id):
 @require_admin
 def modal_pagar_cuota(cuota_id):
     cuota = CuotaMantenimiento.query.get_or_404(cuota_id)
-
-    # Fecha de hoy para usar en el input
     hoy = datetime.utcnow().strftime("%Y-%m-%d")
+    unidad_id = request.args.get("unidad_id", type=int)
 
     return render_template(
         "finanzas/modal_pagar.html",
         cuota=cuota,
-        hoy=hoy
+        hoy=hoy,
+        unidad_id=unidad_id
     )
 
 @finanzas_bp.route("/cuota/<int:cuota_id>/pagar", methods=["POST"])
@@ -282,6 +373,7 @@ def pagar_cuota(cuota_id):
     metodo = request.form.get("metodo_pago")
     referencia = request.form.get("referencia")
     fecha_pago_str = request.form.get("fecha_pago")
+    unidad_id = request.form.get("unidad_id", type=int)
 
     # Convertir fecha manual
     try:
@@ -305,7 +397,7 @@ def pagar_cuota(cuota_id):
     db.session.commit()
 
     flash("Pago registrado exitosamente.", "success")
-    return redirect(url_for("finanzas.lista_cuotas"))
+    return redirect(url_for("unidades.detalle_unidad", unidad_id=unidad_id))
 
 # ====================================
 # MODAL: VER DETALLE DE CUOTA
