@@ -1,136 +1,310 @@
 {% extends "base.html" %}
 
-{% block title %}Finanzas - Resumen por unidad{% endblock %}
+{% block title %}Finanzas - Cartera Financiera{% endblock %}
 
 {% block content %}
 
-<h2 class="mb-4">Resumen financiero por unidad</h2>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+  <div>
+    <h2 class="mb-1">Cartera Financiera</h2>
+    <p class="text-muted mb-0">Estado operativo de cuentas por unidad</p>
+  </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <form method="get" class="row g-2 align-items-end">
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('finanzas.dashboard_financiero') }}" class="btn btn-outline-secondary">
+      Dashboard
+    </a>
 
-    <div class="col-md-4">
-      <label class="form-label">Proyecto</label>
-      <select name="proyecto" class="form-select" id="filterProyectoUnidades" onchange="this.form.submit()">
-        <option value="">Todos</option>
-        {% for p in proyectos %}
-          <option value="{{ p.id }}" {% if filtro_proyecto == p.id %}selected{% endif %}>
-            {{ p.nombre }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="col-md-4">
-      <label class="form-label">Etapa</label>
-      <select name="etapa" class="form-select" id="filterEtapaUnidades" onchange="this.form.submit()">
-        <option value="">Todas</option>
-        {% for e in etapas %}
-          <option value="{{ e.id }}" {% if filtro_etapa == e.id %}selected{% endif %}>
-            {{ e.nombre }}
-          </option>
-        {% endfor %}
-      </select>
-    </div>
-
-  </form>
-
-  <a href="{{ url_for('finanzas.lista_cuotas') }}" class="btn btn-outline-secondary">
-    Ver listado detallado
-  </a>
+    <a href="{{ url_for('finanzas.lista_cuotas') }}" class="btn btn-outline-secondary">
+      Cuotas
+    </a>
+  </div>
 </div>
 
-{% if resumenes %}
-  <div class="row g-3">
-    {% for r in resumenes %}
-      {% set u = r.unidad %}
-      {% set etapa = u.etapa if u and u.etapa else None %}
-      {% set proyecto = etapa.proyecto if etapa and etapa.proyecto else None %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">Balance pendiente</small>
+        <h4 class="fw-bold text-danger mb-0">
+          RD$ {{ "{:,.2f}".format(balance_total or 0) }}
+        </h4>
+      </div>
+    </div>
+  </div>
 
-      <div class="col-md-4 col-lg-3">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body d-flex flex-column">
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">Unidades morosas</small>
+        <h4 class="fw-bold text-warning mb-0">{{ unidades_morosas or 0 }}</h4>
+      </div>
+    </div>
+  </div>
 
-            <div class="d-flex justify-content-between align-items-start mb-2">
-              <h5 class="card-title mb-0">{{ u.nombre }}</h5>
-              {% if r.total_pendientes > 0 %}
-                <span class="badge bg-warning text-dark">
-                  {{ r.total_pendientes }} pend.
-                </span>
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">Unidades al día</small>
+        <h4 class="fw-bold text-success mb-0">{{ unidades_al_dia or 0 }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">Total unidades</small>
+        <h4 class="fw-bold mb-0">
+          {{ total_resumenes or resumenes|length }}
+        </h4>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">Proyecto</label>
+        <select name="proyecto"
+                class="form-select"
+                id="filterProyectoUnidades"
+                onchange="this.form.submit()">
+          <option value="">Todos</option>
+          {% for p in proyectos %}
+            <option value="{{ p.id }}" {% if filtro_proyecto == p.id %}selected{% endif %}>
+              {{ p.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Etapa</label>
+        <select name="etapa"
+                class="form-select"
+                id="filterEtapaUnidades"
+                onchange="this.form.submit()">
+          <option value="">Todas</option>
+          {% for e in etapas %}
+            <option value="{{ e.id }}" {% if filtro_etapa == e.id %}selected{% endif %}>
+              {{ e.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Estado</label>
+        <select name="estado"
+                class="form-select"
+                onchange="this.form.submit()">
+          <option value="todos" {% if filtro_estado == "todos" %}selected{% endif %}>Todos</option>
+          <option value="criticos" {% if filtro_estado == "criticos" %}selected{% endif %}>Críticos</option>
+          <option value="pendientes" {% if filtro_estado == "pendientes" %}selected{% endif %}>Pendientes</option>
+          <option value="aldia" {% if filtro_estado == "aldia" %}selected{% endif %}>Al día</option>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label">Mostrar</label>
+        <select name="per_page"
+                class="form-select"
+                onchange="this.form.submit()">
+
+          {% for n in range(10, 210, 10) %}
+            <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>
+              {{ n }} por página
+            </option>
+          {% endfor %}
+
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label">Buscar</label>
+        <input type="text"
+               class="form-control"
+               id="buscadorFinanzas"
+               placeholder="Buscar en esta página...">
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="d-flex flex-column gap-3" id="listaFinanciera">
+
+  {% for r in resumenes %}
+    {% set u = r.unidad %}
+    {% set etapa = u.etapa if u and u.etapa else None %}
+    {% set proyecto = etapa.proyecto if etapa and etapa.proyecto else None %}
+    {% set pendiente = r.total_pendientes or 0 %}
+
+    {% if pendiente == 0 %}
+      {% set color = "success" %}
+      {% set estado = "Al día" %}
+    {% elif pendiente <= 2 %}
+      {% set color = "warning" %}
+      {% set estado = "Pendiente" %}
+    {% else %}
+      {% set color = "danger" %}
+      {% set estado = "Crítico" %}
+    {% endif %}
+
+    <div class="card border-0 shadow-sm financiera-item"
+         data-unidad="{{ u.nombre|lower }}"
+         data-proyecto="{{ proyecto.nombre|lower if proyecto else '' }}"
+         data-etapa="{{ etapa.nombre|lower if etapa else '' }}"
+         data-estado="{{ estado|lower }}"
+         data-balance="{{ r.monto_pendiente or 0 }}">
+
+      <div class="card-body">
+        <div class="row align-items-center g-3">
+
+          <div class="col-auto">
+            <div class="rounded-circle bg-{{ color }}" style="width:14px; height:14px;"></div>
+          </div>
+
+          <div class="col-lg-3">
+            <div class="fw-bold fs-5">{{ u.nombre }}</div>
+            <div class="text-muted small">
+              {{ proyecto.nombre if proyecto else "-" }} • {{ etapa.nombre if etapa else "-" }}
+            </div>
+          </div>
+
+          <div class="col-lg-3">
+            <div class="fw-semibold text-{{ color }}">{{ estado }}</div>
+            <div class="small text-muted">
+              {% if pendiente > 0 %}
+                {{ pendiente }} cuota(s) pendiente(s)
               {% else %}
-                <span class="badge bg-success">Al día</span>
+                Sin atrasos
               {% endif %}
             </div>
+          </div>
 
-            <p class="mb-1">
-              <small class="text-muted">
-                Proyecto: {{ proyecto.nombre if proyecto else "-" }}
-              </small><br>
-              <small class="text-muted">
-                Etapa: {{ etapa.nombre if etapa else "-" }}
-              </small>
-            </p>
+          <div class="col-lg-2">
+            <div class="small text-muted">Balance pendiente</div>
+            <div class="fw-bold {% if r.monto_pendiente > 0 %}text-danger{% else %}text-success{% endif %}">
+              RD$ {{ "{:,.2f}".format(r.monto_pendiente or 0) }}
+            </div>
+          </div>
 
-            <hr class="my-2">
-
-            <p class="mb-1">
-              <strong>Deuda pendiente:</strong><br>
-              RD$ {{ "%.2f"|format(r.monto_pendiente or 0) }}
-            </p>
-
-            <p class="mb-1">
-              <strong>Última pagada:</strong><br>
+          <div class="col-lg-2">
+            <div class="small text-muted">Última pagada</div>
+            <div>
               {% if r.ultima_pagada %}
                 {{ r.ultima_pagada.periodo.strftime('%Y-%m') }}
               {% else %}
-                <span class="text-muted">—</span>
+                —
               {% endif %}
-            </p>
+            </div>
+          </div>
 
-            <p class="mb-2">
-              <strong>Próxima cuota:</strong><br>
-              {% if r.proxima %}
-                {{ r.proxima.periodo.strftime('%Y-%m') }}
-              {% else %}
-                <span class="text-muted">—</span>
-              {% endif %}
-            </p>
-
-            <p class="mb-3">
-              <small class="text-muted">
-                Monto mensual etapa:
-                {% if r.monto_mensual is not none %}
-                  RD$ {{ "%.2f"|format(r.monto_mensual) }}
-                {% else %}
-                  No definido
-                {% endif %}
-              </small>
-            </p>
-
-            <div class="mt-auto d-flex gap-2">
+          <div class="col-lg-2 text-lg-end">
+            <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
               <a href="{{ url_for('unidades.detalle_unidad', unidad_id=u.id) }}"
-                 class="btn btn-sm btn-outline-primary w-100">
-                Ver unidad
+                 class="btn btn-sm btn-outline-primary">
+                Ver
               </a>
 
-              <button class="btn btn-sm btn-outline-secondary w-100"
-                    onclick="openModal('{{ url_for('finanzas.modal_historial_unidad', unidad_id=u.id) }}')">
+              <button class="btn btn-sm btn-outline-secondary"
+                      onclick="openModal('{{ url_for('finanzas.modal_historial_unidad', unidad_id=u.id) }}')">
                 Historial
-            </button>
+              </button>
             </div>
-
           </div>
+
         </div>
       </div>
-    {% endfor %}
-  </div>
-{% else %}
-  <p class="text-muted">No hay unidades con cuotas para los filtros seleccionados.</p>
+    </div>
+
+  {% else %}
+    <div class="text-center text-muted py-5">
+      No hay unidades registradas.
+    </div>
+  {% endfor %}
+
+</div>
+
+{% if total_pages and total_pages > 1 %}
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap">
+
+      <li class="page-item {% if page <= 1 %}disabled{% endif %}">
+        <a class="page-link"
+           href="{{ url_for('finanzas.resumen_unidades',
+                            proyecto=filtro_proyecto,
+                            etapa=filtro_etapa,
+                            estado=filtro_estado,
+                            per_page=per_page,
+                            page=page-1) }}">
+          Anterior
+        </a>
+      </li>
+
+      {% for p in range(1, total_pages + 1) %}
+        {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+          <li class="page-item {% if p == page %}active{% endif %}">
+            <a class="page-link"
+               href="{{ url_for('finanzas.resumen_unidades',
+                                proyecto=filtro_proyecto,
+                                etapa=filtro_etapa,
+                                estado=filtro_estado,
+                                per_page=per_page,
+                                page=p) }}">
+              {{ p }}
+            </a>
+          </li>
+        {% elif p == page - 3 or p == page + 3 %}
+          <li class="page-item disabled">
+            <span class="page-link">…</span>
+          </li>
+        {% endif %}
+      {% endfor %}
+
+      <li class="page-item {% if page >= total_pages %}disabled{% endif %}">
+        <a class="page-link"
+           href="{{ url_for('finanzas.resumen_unidades',
+                            proyecto=filtro_proyecto,
+                            etapa=filtro_etapa,
+                            estado=filtro_estado,
+                            per_page=per_page,
+                            page=page+1) }}">
+          Siguiente
+        </a>
+      </li>
+
+    </ul>
+  </nav>
+
+  <p class="text-center text-muted small">
+    Mostrando {{ resumenes|length }} de {{ total_resumenes }} unidades
+  </p>
 {% endif %}
 
 <script>
-// Cargar etapas dinámicamente cuando se cambie el proyecto (filtro resumen unidades)
 document.addEventListener("DOMContentLoaded", function() {
+  const buscador = document.getElementById("buscadorFinanzas");
+
+  if (buscador) {
+    buscador.addEventListener("input", function() {
+      const filtro = this.value.toLowerCase();
+
+      document.querySelectorAll(".financiera-item").forEach(item => {
+        const unidad = item.dataset.unidad || "";
+        const proyecto = item.dataset.proyecto || "";
+        const etapa = item.dataset.etapa || "";
+
+        const texto = `${unidad} ${proyecto} ${etapa}`;
+
+        item.style.display = texto.includes(filtro) ? "" : "none";
+      });
+    });
+  }
+
   const proyectoFilter = document.getElementById("filterProyectoUnidades");
   const etapaFilter = document.getElementById("filterEtapaUnidades");
 
@@ -148,6 +322,7 @@ document.addEventListener("DOMContentLoaded", function() {
       const data = await res.json();
 
       etapaFilter.innerHTML = "<option value=''>Todas</option>";
+
       data.forEach(e => {
         etapaFilter.innerHTML += `<option value="${e.id}">${e.nombre}</option>`;
       });

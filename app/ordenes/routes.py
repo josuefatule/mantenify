@@ -13,6 +13,12 @@ from app.models import Adjunto, OrdenTrabajo
 from app.utils.decorators import require_operativo_o_admin, require_admin, require_tecnico
 from . import ordenes_bp
 
+@ordenes_bp.route("/")
+@login_required
+@require_operativo_o_admin
+def lista_ordenes():
+    ordenes = OrdenTrabajo.query.order_by(OrdenTrabajo.id.desc()).all()
+    return render_template("ordenes/lista.html", ordenes=ordenes)
 
 # ===========================
 # CREAR OT DESDE UNA SOLICITUD

@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Finanzas - Dashboard{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="mb-1">Dashboard financiero</h2>
+    <p class="text-muted mb-0">
+      Gestión financiera post venta, recaudo, morosidad y flujo operativo.
+    </p>
+  </div>
+
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('finanzas.resumen_unidades') }}" class="btn btn-outline-secondary">
+      Estados por unidad
+    </a>
+
+    <a href="{{ url_for('finanzas.lista_cuotas') }}" class="btn btn-primary">
+      Gestión de cobros
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1">Facturado este mes</p>
+        <h3 class="fw-bold mb-0">
+          RD$ {{ "{:,.2f}".format(total_facturado_mes or 0) }}
+        </h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1">Cobrado este mes</p>
+        <h3 class="fw-bold text-success mb-0">
+          RD$ {{ "{:,.2f}".format(total_cobrado_mes or 0) }}
+        </h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1">Pendiente total</p>
+        <h3 class="fw-bold text-danger mb-0">
+          RD$ {{ "{:,.2f}".format(pendiente_total or 0) }}
+        </h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1">% recaudo mensual</p>
+        <h3 class="fw-bold mb-0">
+          {{ "%.1f"|format(porcentaje_recaudo or 0) }}%
+        </h3>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="row g-3 mb-4">
+
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1">Cuotas pendientes</p>
+        <h3 class="fw-bold mb-0">{{ cuotas_pendientes or 0 }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1">Unidades morosas</p>
+        <h3 class="fw-bold text-warning mb-0">{{ unidades_morosas or 0 }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <p class="text-muted mb-1">Deuda crítica +90 días</p>
+        <h3 class="fw-bold text-danger mb-0">
+          RD$ {{ "{:,.2f}".format(deuda_critica_90 or 0) }}
+        </h3>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="row g-4">
+
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Top unidades morosas</h5>
+      </div>
+
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Unidad</th>
+              <th>Cuotas pendientes</th>
+              <th>Balance</th>
+              <th>Desde</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in top_morosos %}
+            <tr>
+              <td class="fw-semibold">{{ r.unidad_nombre }}</td>
+              <td>{{ r.cuotas_pendientes }}</td>
+              <td class="text-danger fw-semibold">
+                RD$ {{ "{:,.2f}".format(r.balance or 0) }}
+              </td>
+              <td>
+                {{ r.periodo_mas_antiguo.strftime("%Y-%m") if r.periodo_mas_antiguo else "—" }}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('unidades.detalle_unidad', unidad_id=r.unidad_id) }}"
+                   class="btn btn-sm btn-outline-primary">
+                  Ver
+                </a>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center text-muted py-4">
+                No hay unidades morosas.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Morosidad por etapa</h5>
+      </div>
+
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Proyecto / Etapa</th>
+              <th>Unidades</th>
+              <th>Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in morosidad_etapas %}
+            <tr>
+              <td>
+                <strong>{{ e.proyecto_nombre }}</strong><br>
+                <small class="text-muted">{{ e.etapa_nombre }}</small>
+              </td>
+              <td>{{ e.unidades_morosas }}</td>
+              <td class="text-danger fw-semibold">
+                RD$ {{ "{:,.2f}".format(e.balance or 0) }}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" class="text-center text-muted py-4">
+                No hay morosidad por etapa.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

@@ -1,6 +1,5 @@
 # app/finanzas/routes.py
-from datetime import datetime, date
-
+from datetime import datetime, date, timedelta
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required
 from app.models import Unidad, UnidadPersona, CuotaMantenimiento
@@ -14,6 +13,128 @@ from app.models import (
 from app.utils.decorators import require_admin
 from . import finanzas_bp
 from decimal import Decimal, InvalidOperation
+from sqlalchemy import func, case
+
+@finanzas_bp.route("/")
+@login_required
+@require_admin
+def dashboard_financiero():
+    hoy = date.today()
+    inicio_mes = hoy.replace(day=1)
+
+    if hoy.month == 12:
+        inicio_proximo_mes = date(hoy.year + 1, 1, 1)
+    else:
+        inicio_proximo_mes = date(hoy.year, hoy.month + 1, 1)
+
+    # =========================
+    # KPIs principales
+    # =========================
+
+    total_facturado_mes = db.session.query(
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0)
+    ).filter(
+        CuotaMantenimiento.periodo >= inicio_mes,
+        CuotaMantenimiento.periodo < inicio_proximo_mes
+    ).scalar()
+
+    total_cobrado_mes = db.session.query(
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0)
+    ).filter(
+        CuotaMantenimiento.estado == "Pagado",
+        CuotaMantenimiento.fecha_pago >= inicio_mes,
+        CuotaMantenimiento.fecha_pago < inicio_proximo_mes
+    ).scalar()
+
+    pendiente_total = db.session.query(
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0)
+    ).filter(
+        CuotaMantenimiento.estado == "Pendiente"
+    ).scalar()
+
+    cuotas_pendientes = db.session.query(
+        func.count(CuotaMantenimiento.id)
+    ).filter(
+        CuotaMantenimiento.estado == "Pendiente"
+    ).scalar()
+
+    unidades_morosas = db.session.query(
+        func.count(func.distinct(CuotaMantenimiento.unidad_id))
+    ).filter(
+        CuotaMantenimiento.estado == "Pendiente"
+    ).scalar()
+
+    fecha_90_dias = hoy - timedelta(days=90)
+
+    deuda_critica_90 = db.session.query(
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0)
+    ).filter(
+        CuotaMantenimiento.estado == "Pendiente",
+        CuotaMantenimiento.periodo <= fecha_90_dias
+    ).scalar()
+
+    porcentaje_recaudo = 0
+    if total_facturado_mes and total_facturado_mes > 0:
+        porcentaje_recaudo = (float(total_cobrado_mes) / float(total_facturado_mes)) * 100
+
+    # =========================
+    # Top unidades morosas
+    # =========================
+
+    top_morosos = db.session.query(
+        Unidad.id.label("unidad_id"),
+        Unidad.nombre.label("unidad_nombre"),
+        func.count(CuotaMantenimiento.id).label("cuotas_pendientes"),
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0).label("balance"),
+        func.min(CuotaMantenimiento.periodo).label("periodo_mas_antiguo")
+    ).join(
+        CuotaMantenimiento, CuotaMantenimiento.unidad_id == Unidad.id
+    ).filter(
+        CuotaMantenimiento.estado == "Pendiente"
+    ).group_by(
+        Unidad.id,
+        Unidad.nombre
+    ).order_by(
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0).desc()
+    ).limit(10).all()
+
+    # =========================
+    # Morosidad por etapa
+    # =========================
+
+    morosidad_etapas = db.session.query(
+        Etapa.nombre.label("etapa_nombre"),
+        Proyecto.nombre.label("proyecto_nombre"),
+        func.count(func.distinct(Unidad.id)).label("unidades_morosas"),
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0).label("balance")
+    ).join(
+        Unidad, Unidad.etapa_id == Etapa.id
+    ).join(
+        Proyecto, Proyecto.id == Etapa.proyecto_id
+    ).join(
+        CuotaMantenimiento, CuotaMantenimiento.unidad_id == Unidad.id
+    ).filter(
+        CuotaMantenimiento.estado == "Pendiente"
+    ).group_by(
+        Etapa.id,
+        Etapa.nombre,
+        Proyecto.nombre
+    ).order_by(
+        func.coalesce(func.sum(CuotaMantenimiento.monto), 0).desc()
+    ).all()
+
+    return render_template(
+        "finanzas/dashboard.html",
+        total_facturado_mes=total_facturado_mes,
+        total_cobrado_mes=total_cobrado_mes,
+        pendiente_total=pendiente_total,
+        cuotas_pendientes=cuotas_pendientes,
+        unidades_morosas=unidades_morosas,
+        deuda_critica_90=deuda_critica_90,
+        porcentaje_recaudo=porcentaje_recaudo,
+        top_morosos=top_morosos,
+        morosidad_etapas=morosidad_etapas,
+    )
 
 def get_resumen_unidad(unidad):
     """Devuelve un pequeño resumen financiero para una unidad."""
@@ -58,23 +179,25 @@ def lista_cuotas():
     proyecto_id = request.args.get("proyecto", type=int)
     etapa_id = request.args.get("etapa", type=int)
     estado = request.args.get("estado", default="todos")
-    mes = request.args.get("mes")  # formato esperado: YYYY-MM
+    mes = request.args.get("mes")
+
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 25, type=int)
+
+    if per_page not in [25, 50, 100, 200]:
+        per_page = 25
 
     query = CuotaMantenimiento.query.join(Unidad)
 
-    # Filtrar por proyecto
     if proyecto_id:
         query = query.filter(Unidad.proyecto_id == proyecto_id)
 
-    # Filtrar por etapa
     if etapa_id:
-        query = query.join(Etapa).filter(Etapa.id == etapa_id)
+        query = query.filter(Unidad.etapa_id == etapa_id)
 
-    # Filtrar por estado
     if estado and estado != "todos":
         query = query.filter(CuotaMantenimiento.estado == estado)
 
-    # Filtrar por mes
     if mes:
         try:
             year, month = map(int, mes.split("-"))
@@ -83,24 +206,39 @@ def lista_cuotas():
         except Exception:
             flash("Formato de mes inválido. Use YYYY-MM.", "warning")
 
-    cuotas = query.order_by(CuotaMantenimiento.periodo.desc()).all()
+    query = query.order_by(
+        CuotaMantenimiento.periodo.desc(),
+        Unidad.nombre.asc()
+    )
+
+    pagination = query.paginate(
+        page=page,
+        per_page=per_page,
+        error_out=False
+    )
+
+    cuotas = pagination.items
 
     proyectos = Proyecto.query.order_by(Proyecto.nombre).all()
 
-    # Para facilitar, cargamos todas las etapas del proyecto seleccionado
     etapas = []
     if proyecto_id:
-        etapas = Etapa.query.filter_by(proyecto_id=proyecto_id).order_by(Etapa.nombre).all()
+        etapas = Etapa.query.filter_by(
+            proyecto_id=proyecto_id
+        ).order_by(Etapa.nombre).all()
 
     return render_template(
         "finanzas/lista.html",
         cuotas=cuotas,
+        pagination=pagination,
         proyectos=proyectos,
         etapas=etapas,
         filtro_proyecto=proyecto_id,
         filtro_etapa=etapa_id,
         filtro_estado=estado,
         filtro_mes=mes,
+        page=page,
+        per_page=per_page,
     )
 
 @finanzas_bp.route("/cuota/modal/individual")
@@ -329,11 +467,11 @@ def editar_cuota(cuota_id):
 @require_admin
 def eliminar_cuota(cuota_id):
     cuota = CuotaMantenimiento.query.get_or_404(cuota_id)
+    next_url = request.form.get("next") or url_for("finanzas.resumen_unidades")
     db.session.delete(cuota)
     db.session.commit()
     flash("Cuota eliminada correctamente.", "info")
-    return redirect(url_for("finanzas.lista_cuotas"))
-
+    return redirect(next_url)
 
 # ====================================
 # AJAX: OBTENER ETAPAS POR PROYECTO
@@ -397,7 +535,7 @@ def pagar_cuota(cuota_id):
     db.session.commit()
 
     flash("Pago registrado exitosamente.", "success")
-    return redirect(url_for("unidades.detalle_unidad", unidad_id=unidad_id))
+    return redirect(request.referrer or url_for("finanzas.resumen_unidades"))
 
 # ====================================
 # MODAL: VER DETALLE DE CUOTA
@@ -407,7 +545,6 @@ def pagar_cuota(cuota_id):
 @require_admin
 def modal_ver_cuota(cuota_id):
     cuota = CuotaMantenimiento.query.get_or_404(cuota_id)
-
     return render_template(
         "finanzas/modal_ver_cuota.html",
         cuota=cuota
@@ -420,16 +557,29 @@ def resumen_unidades():
     # Filtros
     proyecto_id = request.args.get("proyecto", type=int)
     etapa_id = request.args.get("etapa", type=int)
+    filtro_estado = request.args.get("estado", "todos")
+    page = request.args.get("page", 1, type=int)
+    per_page = request.args.get("per_page", 10, type=int)
+
+    # Solo múltiplos de 10, mínimo 10, máximo 200
+    if per_page < 10:
+        per_page = 10
+
+    if per_page > 200:
+        per_page = 200
+
+    if per_page % 10 != 0:
+        per_page = 10
 
     proyectos = Proyecto.query.order_by(Proyecto.nombre).all()
 
-    # Etapas a mostrar en el filtro (dependiendo del proyecto)
     if proyecto_id:
-        etapas = Etapa.query.filter_by(proyecto_id=proyecto_id).order_by(Etapa.nombre).all()
+        etapas = Etapa.query.filter_by(
+            proyecto_id=proyecto_id
+        ).order_by(Etapa.nombre).all()
     else:
         etapas = Etapa.query.order_by(Etapa.nombre).all()
 
-    # Query base de unidades
     unidades_query = Unidad.query
 
     if proyecto_id:
@@ -440,16 +590,92 @@ def resumen_unidades():
 
     unidades = unidades_query.order_by(Unidad.nombre).all()
 
-    # Construir resumen por unidad
     resumenes = [get_resumen_unidad(u) for u in unidades]
+
+    # =========================
+    # FILTRO POR ESTADO
+    # =========================
+    if filtro_estado == "aldia":
+        resumenes = [
+            r for r in resumenes
+            if (r["total_pendientes"] or 0) == 0
+        ]
+
+    elif filtro_estado == "pendientes":
+        resumenes = [
+            r for r in resumenes
+            if (r["total_pendientes"] or 0) > 0
+            and (r["total_pendientes"] or 0) <= 2
+        ]
+
+    elif filtro_estado == "criticos":
+        resumenes = [
+            r for r in resumenes
+            if (r["total_pendientes"] or 0) > 2
+        ]
+
+    # =========================
+    # KPIs
+    # =========================
+    balance_total = sum(
+        (r["monto_pendiente"] or 0)
+        for r in resumenes
+    )
+
+    unidades_morosas = sum(
+        1 for r in resumenes
+        if (r["total_pendientes"] or 0) > 0
+    )
+
+    unidades_al_dia = sum(
+        1 for r in resumenes
+        if (r["total_pendientes"] or 0) == 0
+    )
+
+    # =========================
+    # ORDENAR POR GRAVEDAD
+    # =========================
+    resumenes = sorted(
+        resumenes,
+        key=lambda r: (r["unidad"].nombre or "").lower()
+    )
+
+    # =========================
+    # PAGINACIÓN
+    # =========================
+    total_resumenes = len(resumenes)
+
+    total_pages = (
+        (total_resumenes + per_page - 1) // per_page
+        if total_resumenes > 0 else 1
+    )
+
+    if page < 1:
+        page = 1
+
+    if page > total_pages:
+        page = total_pages
+
+    start = (page - 1) * per_page
+    end = start + per_page
+
+    resumenes_paginados = resumenes[start:end]
 
     return render_template(
         "finanzas/unidades.html",
-        resumenes=resumenes,
+        resumenes=resumenes_paginados,
         proyectos=proyectos,
         etapas=etapas,
         filtro_proyecto=proyecto_id,
         filtro_etapa=etapa_id,
+        filtro_estado=filtro_estado,
+        balance_total=balance_total,
+        unidades_morosas=unidades_morosas,
+        unidades_al_dia=unidades_al_dia,
+        total_resumenes=total_resumenes,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
     )
 
 @finanzas_bp.route("/cuotas/unidad/<int:unidad_id>/historial")

@@ -1,53 +1,365 @@
 {% extends "base.html" %}
 
+{% block title %}Dashboard - Mantenify{% endblock %}
+
 {% block content %}
 
-<h2 class="mb-4">Dashboard</h2>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+  <div>
+    <h2 class="mb-1">Panel general</h2>
+    <p class="text-muted mb-0">
+      Resumen operativo de mantenimiento, órdenes de trabajo y cartera financiera.
+    </p>
+  </div>
+
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('solicitudes.lista_solicitudes') }}" class="btn btn-outline-primary">
+      Solicitudes
+    </a>
+
+    <a href="{{ url_for('finanzas.dashboard_financiero') }}" class="btn btn-primary">
+      Finanzas
+    </a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">Solicitudes abiertas</small>
+        <h3 class="fw-bold text-primary mb-0">{{ solicitudes_abiertas or 0 }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">OT en proceso</small>
+        <h3 class="fw-bold text-warning mb-0">{{ ot_en_proceso or 0 }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">Cuotas pendientes</small>
+        <h3 class="fw-bold text-danger mb-0">{{ cuotas_pendientes or 0 }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <small class="text-muted d-block mb-1">Balance pendiente</small>
+        <h5 class="fw-bold text-danger mb-0">
+          RD$ {{ "{:,.2f}".format(balance_pendiente_total or 0) }}
+        </h5>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="row g-4 mb-4">
+
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Prioridades operativas</h5>
+        <span class="badge bg-light text-dark">Hoy</span>
+      </div>
+
+      <div class="card-body">
+
+        <div class="row g-3">
+
+          <div class="col-md-4">
+            <div class="border rounded-3 p-3 h-100">
+              <small class="text-muted d-block mb-1">Solicitudes abiertas</small>
+              <div class="fw-bold fs-4 text-primary">{{ solicitudes_abiertas or 0 }}</div>
+              <a href="{{ url_for('solicitudes.lista_solicitudes') }}" class="small text-decoration-none">
+                Ver solicitudes
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="border rounded-3 p-3 h-100">
+              <small class="text-muted d-block mb-1">Órdenes activas</small>
+              <div class="fw-bold fs-4 text-warning">{{ ot_en_proceso or 0 }}</div>
+              <a href="{{ url_for('ordenes.mis_ordenes') }}" class="small text-decoration-none">
+                Ver órdenes
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-4">
+            <div class="border rounded-3 p-3 h-100">
+              <small class="text-muted d-block mb-1">Unidades morosas</small>
+              <div class="fw-bold fs-4 text-danger">{{ unidades_morosas or 0 }}</div>
+              <a href="{{ url_for('finanzas.resumen_unidades') }}" class="small text-decoration-none">
+                Ver cartera
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Resumen financiero</h5>
+        <a href="{{ url_for('finanzas.dashboard_financiero') }}" class="small text-decoration-none">
+          Ver finanzas
+        </a>
+      </div>
+
+      <div class="card-body">
+
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted">Cuotas pendientes</span>
+          <strong>{{ cuotas_pendientes or 0 }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted">Pagadas este mes</span>
+          <strong class="text-success">{{ cuotas_pagadas_mes or 0 }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between border-bottom pb-2 mb-2">
+          <span class="text-muted">Unidades morosas</span>
+          <strong class="text-warning">{{ unidades_morosas or 0 }}</strong>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <span class="text-muted">Balance pendiente</span>
+          <strong class="text-danger">
+            RD$ {{ "{:,.2f}".format(balance_pendiente_total or 0) }}
+          </strong>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
 
 <div class="row g-4">
 
-  <div class="col-md-4">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">Solicitudes abiertas</h5>
-        <p class="display-5 fw-bold text-primary">{{ solicitudes_abiertas }}</p>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Solicitudes recientes</h5>
+        <a href="{{ url_for('solicitudes.lista_solicitudes') }}" class="small text-decoration-none">
+          Ver todas
+        </a>
       </div>
+
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Solicitud</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in solicitudes_recientes %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">
+                    {{ s.titulo if s.titulo is defined and s.titulo else "Solicitud #" ~ s.id }}
+                  </div>
+                  <small class="text-muted">
+                    {{ s.creado_en.strftime('%Y-%m-%d') if s.creado_en is defined and s.creado_en else "" }}
+                  </small>
+                </td>
+                <td>
+                  <span class="badge bg-secondary">{{ s.estado }}</span>
+                </td>
+                <td class="text-end">
+                  <a href="{{ url_for('solicitudes.detalle_solicitud', solicitud_id=s.id) }}"
+                     class="btn btn-sm btn-outline-primary">
+                    Ver
+                  </a>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">
+                  No hay solicitudes recientes.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
     </div>
   </div>
 
-  <div class="col-md-4">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">OT en proceso</h5>
-        <p class="display-5 fw-bold text-warning">{{ ot_en_proceso }}</p>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Top unidades morosas</h5>
+        <a href="{{ url_for('finanzas.resumen_unidades') }}" class="small text-decoration-none">
+          Ver cartera
+        </a>
       </div>
+
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Unidad</th>
+              <th>Cuotas</th>
+              <th>Balance</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for r in top_morosos %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ r.unidad_nombre }}</div>
+                  <small class="text-muted">
+                    Desde {{ r.desde.strftime('%Y-%m') if r.desde else "—" }}
+                  </small>
+                </td>
+                <td>{{ r.cuotas_pendientes }}</td>
+                <td class="text-danger fw-semibold">
+                  RD$ {{ "{:,.2f}".format(r.balance or 0) }}
+                </td>
+                <td class="text-end">
+                  <a href="{{ url_for('unidades.detalle_unidad', unidad_id=r.unidad_id) }}"
+                     class="btn btn-sm btn-outline-primary">
+                    Ver
+                  </a>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-4">
+                  No hay unidades morosas.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+      </div>
+
     </div>
   </div>
 
-  <div class="col-md-4">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">OT completadas</h5>
-        <p class="display-5 fw-bold text-success">{{ ot_completadas }}</p>
+</div>
+
+<div class="row g-4 mt-1 mb-5">
+
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Órdenes recientes</h5>
+        <a href="{{ url_for('ordenes.mis_ordenes') }}" class="small text-decoration-none">
+          Ver todas
+        </a>
       </div>
+
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Orden</th>
+              <th>Estado</th>
+              <th></th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for ot in ordenes_recientes %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">
+                    {{ ot.titulo if ot.titulo is defined and ot.titulo else "OT #" ~ ot.id }}
+                  </div>
+                </td>
+                <td>
+                  <span class="badge bg-warning text-dark">{{ ot.estado }}</span>
+                </td>
+                <td class="text-end">
+                  <a href="{{ url_for('ordenes.detalle_ot', orden_id=ot.id) }}"
+                     class="btn btn-sm btn-outline-primary">
+                    Ver
+                  </a>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">
+                  No hay órdenes recientes.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+      </div>
+
     </div>
   </div>
 
-  <div class="col-md-6">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">Cuotas pendientes</h5>
-        <p class="display-5 fw-bold text-danger">{{ cuotas_pendientes }}</p>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h5 class="mb-0">Últimos pagos</h5>
       </div>
-    </div>
-  </div>
 
-  <div class="col-md-6">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        <h5 class="card-title">Cuotas pagadas este mes</h5>
-        <p class="display-5 fw-bold text-success">{{ cuotas_pagadas_mes }}</p>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>Unidad</th>
+              <th>Fecha</th>
+              <th>Monto</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for p in pagos_recientes %}
+              <tr>
+                <td>
+                  {{ p.unidad.nombre if p.unidad else "-" }}
+                </td>
+                <td>
+                  {{ p.fecha_pago.strftime('%Y-%m-%d') if p.fecha_pago else "—" }}
+                </td>
+                <td class="fw-semibold text-success">
+                  RD$ {{ "{:,.2f}".format(p.monto_pagado or 0) }}
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">
+                  No hay pagos registrados.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
       </div>
+
     </div>
   </div>
 

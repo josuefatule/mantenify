@@ -1,54 +1,119 @@
 <div class="modal-header">
-    <h5 class="modal-title">Historial de cuotas de la unidad {{ unidad.nombre }}</h5>
-    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div>
+    <h5 class="modal-title mb-0">
+      Historial financiero - {{ unidad.nombre }}
+    </h5>
+    <small class="text-muted">
+      {{ unidad.etapa.proyecto.nombre if unidad.etapa and unidad.etapa.proyecto else "-" }}
+      ·
+      {{ unidad.etapa.nombre if unidad.etapa else "-" }}
+    </small>
+  </div>
+
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 </div>
 
 <div class="modal-body">
 
-    <p>
-        <strong>Proyecto:</strong> {{ unidad.etapa.proyecto.nombre }} <br>
-        <strong>Etapa:</strong> {{ unidad.etapa.nombre }} <br>
-        <strong>Unidad:</strong> {{ unidad.nombre }}
-    </p>
+  {% set pendientes = cuotas|selectattr("estado", "equalto", "Pendiente")|list %}
+  {% set pagadas = cuotas|selectattr("estado", "equalto", "Pagado")|list %}
+  {% set total_pendiente = pendientes|sum(attribute="monto") %}
 
-    {% if cuotas %}
-    <table class="table table-sm table-bordered">
+  <div class="row g-3 mb-4">
+    <div class="col-md-4">
+      <div class="border rounded-3 p-3 h-100">
+        <small class="text-muted d-block">Balance pendiente</small>
+        <div class="fw-bold text-danger fs-5">
+          RD$ {{ "{:,.2f}".format(total_pendiente or 0) }}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="border rounded-3 p-3 h-100">
+        <small class="text-muted d-block">Cuotas pendientes</small>
+        <div class="fw-bold text-warning fs-5">
+          {{ pendientes|length }}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="border rounded-3 p-3 h-100">
+        <small class="text-muted d-block">Cuotas pagadas</small>
+        <div class="fw-bold text-success fs-5">
+          {{ pagadas|length }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if cuotas %}
+
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
         <thead class="table-light">
-            <tr>
-                <th>Periodo</th>
-                <th>Monto</th>
-                <th>Estado</th>
-                <th>Fecha pago</th>
-                <th>Acción</th>
-            </tr>
+          <tr>
+            <th>Periodo</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Fecha pago</th>
+            <th class="text-end">Acciones</th>
+          </tr>
         </thead>
 
         <tbody>
-            {% for c in cuotas %}
-            <tr>
-                <td>{{ c.periodo.strftime('%Y-%m') }}</td>
-                <td>RD$ {{ "%.2f"|format(c.monto) }}</td>
-                <td>
-                    {% if c.estado == "Pendiente" %}
-                        <span class="badge bg-warning text-dark">Pendiente</span>
-                    {% else %}
-                        <span class="badge bg-success">Pagado</span>
-                    {% endif %}
-                </td>
-                <td>{{ c.fecha_pago.strftime('%Y-%m-%d') if c.fecha_pago else "—" }}</td>
+          {% for c in cuotas %}
+          <tr class="{% if c.estado == 'Pendiente' %}table-warning{% endif %}">
+            <td class="fw-semibold">
+              {{ c.periodo.strftime('%Y-%m') }}
+            </td>
 
-                <td>
-                    <button class="btn btn-sm btn-info"
-                            onclick="openModal('{{ url_for('finanzas.modal_ver_cuota', cuota_id=c.id) }}')">
-                        Ver
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
+            <td>
+              RD$ {{ "{:,.2f}".format(c.monto or 0) }}
+            </td>
+
+            <td>
+              {% if c.estado == "Pendiente" %}
+                <span class="badge bg-warning text-dark">Pendiente</span>
+              {% elif c.estado == "Pagado" %}
+                <span class="badge bg-success">Pagado</span>
+              {% else %}
+                <span class="badge bg-secondary">{{ c.estado }}</span>
+              {% endif %}
+            </td>
+
+            <td>
+              {{ c.fecha_pago.strftime('%Y-%m-%d') if c.fecha_pago else "—" }}
+            </td>
+
+            <td class="text-end">
+              <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary"
+                        onclick="openModal('{{ url_for('finanzas.modal_ver_cuota', cuota_id=c.id) }}')">
+                  Ver
+                </button>
+
+                {% if c.estado == "Pendiente" %}
+                  <button class="btn btn-sm btn-success"
+                          onclick="openModal('{{ url_for('finanzas.modal_pagar_cuota', cuota_id=c.id, unidad_id=unidad.id) }}')">
+                    Pagar
+                  </button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
         </tbody>
-    </table>
+      </table>
+    </div>
 
-    {% else %}
-    <p class="text-muted">No hay cuotas generadas para esta unidad.</p>
-    {% endif %}
+  {% else %}
+
+    <div class="text-center text-muted py-4">
+      No hay cuotas generadas para esta unidad.
+    </div>
+
+  {% endif %}
+
 </div>
