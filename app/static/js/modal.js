@@ -50,23 +50,62 @@ document.addEventListener("hidden.bs.modal", function () {
 async function submitForm(event, formElement) {
     event.preventDefault();
 
+    const submitButton = formElement.querySelector('button[type="submit"]');
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.dataset.originalText = submitButton.innerHTML;
+        submitButton.innerHTML = "Procesando...";
+    }
+
     const url = formElement.action;
     const formData = new FormData(formElement);
 
-    const response = await fetch(url, {
-        method: "POST",
-        body: formData
-    });
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            body: formData
+        });
 
-    if (response.redirected) {
-        window.location.href = response.url;
-    } else {
-        const html = await response.text();
-        document.getElementById("modalContent").innerHTML = html;
-        initModalEnhancements();
+        if (response.redirected) {
+            window.location.href = response.url;
+            return;
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+
+        if (contentType.includes("application/json")) {
+            const data = await response.json();
+
+            if (data.success) {
+                const modalEl = document.getElementById("mainModal");
+                const modal = bootstrap.Modal.getInstance(modalEl);
+
+                if (modal) {
+                    modal.hide();
+                }
+
+                window.location.href = data.redirect_url;
+                return;
+            }
+
+            alert(data.message || "Ocurrió un error.");
+        } else {
+            const html = await response.text();
+            document.getElementById("modalContent").innerHTML = html;
+            initModalEnhancements();
+        }
+
+    } catch (error) {
+        console.error("Error enviando formulario:", error);
+        alert("Ocurrió un error procesando la solicitud.");
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            submitButton.innerHTML = submitButton.dataset.originalText || "Enviar";
+        }
     }
 }
-
 
 // ======================================================================
 // SISTEMA UNIFICADO DE HANDLERS PARA TODOS LOS MODALES

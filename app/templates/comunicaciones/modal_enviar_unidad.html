@@ -1,0 +1,106 @@
+<div class="modal-header">
+  <h5 class="modal-title">
+    Enviar comunicación - Unidad {{ unidad.nombre }}
+  </h5>
+  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('comunicaciones.enviar_comunicacion_unidad', unidad_id=unidad.id) }}"
+      onsubmit="submitForm(event, this)">
+
+  <div class="modal-body">
+
+    <div class="mb-3">
+      <label class="form-label">Destinatario</label>
+      <select name="persona_id" class="form-select" required>
+        <option value="">Seleccione...</option>
+
+        {% for r in relaciones %}
+          <option value="{{ r.persona.id }}">
+            {{ r.persona.nombre_completo }}
+            —
+            {% if r.es_propietario %}
+              Propietario
+            {% else %}
+              Inquilino
+            {% endif %}
+            {% if r.es_principal %}
+              principal
+            {% endif %}
+            —
+            {{ r.persona.email or "Sin correo" }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Asunto</label>
+      <input type="text"
+             name="asunto"
+             class="form-control"
+             value="Comunicación sobre unidad {{ unidad.nombre }}"
+             required>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Mensaje</label>
+      <textarea name="cuerpo"
+                class="form-control"
+                rows="6"
+                required>Estimado/a,
+
+Le escribimos en relación con la unidad {{ unidad.nombre }}.
+
+Saludos,</textarea>
+    </div>
+
+    <hr>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input"
+             type="checkbox"
+             name="adjuntar_estado"
+             id="adjuntarEstadoCuenta">
+      <label class="form-check-label" for="adjuntarEstadoCuenta">
+        Adjuntar estado de cuenta
+      </label>
+    </div>
+
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Desde</label>
+        <input type="date"
+               name="fecha_desde"
+               class="form-control"
+               value="{{ desde_default.strftime('%Y-%m-%d') }}">
+      </div>
+
+      <div class="col-md-6 mb-3">
+        <label class="form-label">Hasta</label>
+        <input type="date"
+               name="fecha_hasta"
+               class="form-control"
+               value="{{ hoy.strftime('%Y-%m-%d') }}">
+      </div>
+    </div>
+
+    <div class="alert alert-warning small mb-0">
+      Verifique cuidadosamente el destinatario antes de enviar. Si adjunta estado de cuenta,
+      el PDF se generará específicamente para esta unidad.
+    </div>
+
+  </div>
+
+  <div class="modal-footer">
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+      Cancelar
+    </button>
+
+    <button type="submit" class="btn btn-primary">
+      Enviar correo
+    </button>
+  </div>
+
+</form>

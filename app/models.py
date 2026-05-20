@@ -248,3 +248,30 @@ class UnidadPersona(db.Model):
     fecha_desde = db.Column(db.Date, default=datetime.utcnow)
     fecha_hasta = db.Column(db.Date, nullable=True)
 
+class Comunicacion(db.Model):
+    __tablename__ = "comunicaciones"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    tipo = db.Column(db.String(30), nullable=False, default="individual")
+    unidad_id = db.Column(db.Integer, db.ForeignKey("unidades.id"), nullable=True)
+    persona_id = db.Column(db.Integer, db.ForeignKey("personas.id"), nullable=True)
+    enviado_por_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    email_destino = db.Column(db.String(150), nullable=False)
+    asunto = db.Column(db.String(255), nullable=False)
+    cuerpo = db.Column(db.Text, nullable=False)
+
+    incluye_estado_cuenta = db.Column(db.Boolean, default=False)
+    fecha_desde = db.Column(db.Date, nullable=True)
+    fecha_hasta = db.Column(db.Date, nullable=True)
+
+    estado = db.Column(db.String(30), default="enviada")  # enviada / error
+    error = db.Column(db.Text, nullable=True)
+
+    creado_en = db.Column(db.DateTime, default=datetime.utcnow)
+    enviado_en = db.Column(db.DateTime, nullable=True)
+
+    unidad = db.relationship("Unidad", backref="comunicaciones")
+    persona = db.relationship("Persona", backref="comunicaciones")
+    usuario = db.relationship("User", backref="comunicaciones_enviadas")

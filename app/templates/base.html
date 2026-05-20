@@ -43,7 +43,13 @@
             <a class="nav-link" href="{{ url_for('finanzas.resumen_unidades') }}">
               Finanzas
             </a>
-          </li>>        
+          </li>>    
+          <li class="nav-item">
+              <a class="nav-link"
+                href="{{ url_for('comunicaciones.index') }}">
+                  Comunicaciones
+              </a>
+          </li>    
           {% endif %}
 
         {% if current_user.rol == "tecnico" %}

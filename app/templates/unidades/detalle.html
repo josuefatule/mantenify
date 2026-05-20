@@ -53,6 +53,14 @@
                 onclick="openModal('{{ url_for('finanzas.modal_historial_unidad', unidad_id=unidad.id) }}')">
           Ver historial completo
         </button>
+        <button class="btn btn-outline-primary"
+                onclick="openModal('{{ url_for('comunicaciones.modal_enviar_unidad', unidad_id=unidad.id) }}')">
+          Enviar comunicación
+        </button>
+        <a href="{{ url_for('comunicaciones.historial_unidad', unidad_id=unidad.id) }}"
+          class="btn btn-outline-secondary">
+          Historial comunicaciones
+        </a>
       </div>
     </h4>
 

@@ -4,11 +4,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from config import Config
+from flask_mail import Mail
 
 db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
-
+mail = Mail()
 login_manager.login_view = "auth.login"
 login_manager.login_message = "Por favor inicia sesión para continuar."
 
@@ -20,7 +21,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
-
+    mail.init_app(app)
     # Registrar modelos
     from app import models  # noqa: F401
 
@@ -41,6 +42,7 @@ def create_app(config_class=Config):
     from app.finanzas import finanzas_bp
     from app.reportes import reportes_bp
     from app.etapas import etapas_bp
+    from app.comunicaciones import comunicaciones_bp
 
     app.register_blueprint(proyectos_bp)
     app.register_blueprint(unidades_bp)
@@ -52,6 +54,7 @@ def create_app(config_class=Config):
     app.register_blueprint(finanzas_bp, url_prefix="/finanzas")
     app.register_blueprint(reportes_bp)
     app.register_blueprint(etapas_bp)
+    app.register_blueprint(comunicaciones_bp)
     
     return app
 

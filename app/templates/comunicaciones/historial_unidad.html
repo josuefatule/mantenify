@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de comunicaciones{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2>Historial de comunicaciones</h2>
+    <p class="text-muted mb-0">
+      Unidad {{ unidad.nombre }}
+    </p>
+  </div>
+
+  <a href="{{ url_for('unidades.detalle_unidad', unidad_id=unidad.id) }}"
+     class="btn btn-secondary">
+    Volver a unidad
+  </a>
+</div>
+
+<div class="card shadow-sm border-0">
+  <div class="card-body">
+
+    {% if comunicaciones %}
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Destinatario</th>
+              <th>Email</th>
+              <th>Asunto</th>
+              <th>Estado cuenta</th>
+              <th>Estado</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for c in comunicaciones %}
+              <tr>
+                <td>
+                  {{ c.enviado_en.strftime('%d/%m/%Y %I:%M %p') if c.enviado_en else '-' }}
+                </td>
+
+                <td>
+                  {{ c.persona.nombre_completo if c.persona else 'No disponible' }}
+                </td>
+
+                <td>
+                  {{ c.email_destino }}
+                </td>
+
+                <td>
+                  {{ c.asunto }}
+                </td>
+
+                <td>
+                  {% if c.incluye_estado_cuenta %}
+                    <span class="badge bg-info">Sí</span>
+                  {% else %}
+                    <span class="badge bg-secondary">No</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% if c.estado == "enviada" %}
+                    <span class="badge bg-success">Enviada</span>
+                  {% else %}
+                    <span class="badge bg-danger">Error</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {{ c.usuario.nombre if c.usuario else '-' }}
+                </td>
+              </tr>
+
+              {% if c.estado == "error" and c.error %}
+                <tr>
+                  <td colspan="7">
+                    <div class="alert alert-danger mb-0 small">
+                      {{ c.error }}
+                    </div>
+                  </td>
+                </tr>
+              {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+    {% else %}
+
+      <div class="alert alert-info mb-0">
+        Esta unidad todavía no tiene comunicaciones registradas.
+      </div>
+
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
