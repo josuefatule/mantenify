@@ -8,7 +8,12 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # ============================s
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+    }
+
+    # ============================
     # CONFIGURACIÓN DE CORREO
     # ============================
     MAIL_SERVER = os.getenv("MAIL_SERVER", "smtp.gmail.com")
