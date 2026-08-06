@@ -1,6 +1,14 @@
 from flask import render_template, request
 from flask_login import login_required
+from sqlalchemy.orm import aliased, selectinload
+
 from app.models import Proyecto, Etapa, Unidad, Persona, UnidadPersona, CuotaMantenimiento
+from app.services.finanzas_service import obtener_saldos_pendientes_por_unidad
+from app.services.unidades_service import (
+    obtener_relacion_principal_actual,
+    subconsulta_id_relacion_principal_actual,
+)
+from app.utils.decorators import require_admin
 from . import reportes_bp
 from datetime import date
 from types import SimpleNamespace
@@ -177,6 +185,142 @@ def reporte_proyecto_detalle_ajax(proyecto_id):
         mes_detalle=mes_detalle,
         mes_inicio=mes_inicio,
         mes_fin=mes_fin
+    )
+
+
+@reportes_bp.route("/proyecto/<int:proyecto_id>/entregas")
+@login_required
+@require_admin
+def reporte_entregas_proyecto(proyecto_id):
+    proyecto = Proyecto.query.get_or_404(proyecto_id)
+    page = request.args.get("page", 1, type=int)
+    filtros = SimpleNamespace(
+        etapa_id=(request.args.get("etapa_id") or "").strip(),
+        fecha_desde=(request.args.get("fecha_desde") or "").strip(),
+        fecha_hasta=(request.args.get("fecha_hasta") or "").strip(),
+        persona=(request.args.get("persona") or "").strip(),
+        unidad=(request.args.get("unidad") or "").strip(),
+    )
+    errores = []
+    etapas = (
+        Etapa.query
+        .filter(Etapa.proyecto_id == proyecto_id)
+        .order_by(Etapa.nombre.asc(), Etapa.id.asc())
+        .all()
+    )
+
+    fecha_desde = None
+    fecha_hasta = None
+
+    if filtros.fecha_desde:
+        try:
+            fecha_desde = date.fromisoformat(filtros.fecha_desde)
+        except ValueError:
+            errores.append("La fecha inicial no tiene un formato válido.")
+
+    if filtros.fecha_hasta:
+        try:
+            fecha_hasta = date.fromisoformat(filtros.fecha_hasta)
+        except ValueError:
+            errores.append("La fecha final no tiene un formato válido.")
+
+    rango_valido = True
+    if fecha_desde and fecha_hasta and fecha_desde > fecha_hasta:
+        errores.append("La fecha inicial no puede ser posterior a la fecha final.")
+        rango_valido = False
+
+    relacion_principal = aliased(UnidadPersona)
+    relacion_principal_id = subconsulta_id_relacion_principal_actual()
+
+    unidades_query = (
+        Unidad.query
+        .outerjoin(
+            relacion_principal,
+            relacion_principal.id == relacion_principal_id,
+        )
+        .filter(Unidad.proyecto_id == proyecto_id)
+        .options(
+            selectinload(Unidad.unidad_personas)
+            .joinedload(UnidadPersona.persona)
+        )
+    )
+
+    if filtros.etapa_id == "sin_etapa":
+        unidades_query = unidades_query.filter(Unidad.etapa_id.is_(None))
+    elif filtros.etapa_id:
+        try:
+            etapa_id = int(filtros.etapa_id)
+        except ValueError:
+            errores.append("La etapa seleccionada no es válida.")
+        else:
+            etapa_valida = next(
+                (etapa for etapa in etapas if etapa.id == etapa_id),
+                None,
+            )
+            if etapa_valida is None:
+                errores.append("La etapa seleccionada no pertenece a este proyecto.")
+            else:
+                unidades_query = unidades_query.filter(Unidad.etapa_id == etapa_id)
+
+    if rango_valido:
+        if fecha_desde:
+            unidades_query = unidades_query.filter(
+                relacion_principal.fecha_desde >= fecha_desde
+            )
+        if fecha_hasta:
+            unidades_query = unidades_query.filter(
+                relacion_principal.fecha_desde <= fecha_hasta
+            )
+
+    if filtros.persona:
+        unidades_query = unidades_query.filter(
+            relacion_principal.persona.has(
+                Persona.nombre_completo.ilike(f"%{filtros.persona}%")
+            )
+        )
+
+    if filtros.unidad:
+        unidades_query = unidades_query.filter(
+            Unidad.nombre.ilike(f"%{filtros.unidad}%")
+        )
+
+    pagination = (
+        unidades_query
+        .order_by(Unidad.nombre.asc(), Unidad.id.asc())
+        .paginate(page=page, per_page=50, error_out=False)
+    )
+
+    saldos = obtener_saldos_pendientes_por_unidad(
+        [unidad.id for unidad in pagination.items]
+    )
+    filas = []
+
+    for unidad in pagination.items:
+        relacion = obtener_relacion_principal_actual(unidad)
+        filas.append(
+            SimpleNamespace(
+                unidad=unidad,
+                relacion=relacion,
+                saldo_pendiente=saldos[unidad.id],
+            )
+        )
+
+    parametros_filtros = {
+        nombre: valor
+        for nombre, valor in vars(filtros).items()
+        if valor
+    }
+
+    return render_template(
+        "reportes/entregas_proyecto.html",
+        proyecto=proyecto,
+        etapas=etapas,
+        filas=filas,
+        pagination=pagination,
+        filtros=filtros,
+        parametros_filtros=parametros_filtros,
+        errores=errores,
+        hay_filtros=bool(parametros_filtros),
     )
 
 # ============================================

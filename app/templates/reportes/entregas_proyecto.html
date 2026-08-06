@@ -1,0 +1,188 @@
+{% extends "reportes/base_reportes.html" %}
+
+{% block title %}Reporte de Entregas - {{ proyecto.nombre }}{% endblock %}
+
+{% block report_content %}
+<div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-4">
+  <div>
+    <h3 class="mb-1">Reporte de Entregas</h3>
+    <p class="text-muted mb-0">Proyecto: {{ proyecto.nombre }}</p>
+  </div>
+
+  <a href="{{ url_for('proyectos.etapas_lista', proyecto_id=proyecto.id) }}"
+     class="btn btn-outline-secondary">
+    Volver a Etapas
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-sm-6 col-lg-3">
+        <label for="filtroEtapa" class="form-label">Etapa</label>
+        <select id="filtroEtapa" name="etapa_id" class="form-select">
+          <option value="">Todas las etapas</option>
+          {% for etapa in etapas %}
+            <option value="{{ etapa.id }}"
+                    {% if filtros.etapa_id == (etapa.id|string) %}selected{% endif %}>
+              {{ etapa.nombre }}
+            </option>
+          {% endfor %}
+          <option value="sin_etapa"
+                  {% if filtros.etapa_id == "sin_etapa" %}selected{% endif %}>
+            Sin etapa
+          </option>
+        </select>
+      </div>
+
+      <div class="col-sm-6 col-lg-2">
+        <label for="filtroFechaDesde" class="form-label">Fecha desde</label>
+        <input type="date"
+               id="filtroFechaDesde"
+               name="fecha_desde"
+               class="form-control"
+               value="{{ filtros.fecha_desde }}">
+      </div>
+
+      <div class="col-sm-6 col-lg-2">
+        <label for="filtroFechaHasta" class="form-label">Fecha hasta</label>
+        <input type="date"
+               id="filtroFechaHasta"
+               name="fecha_hasta"
+               class="form-control"
+               value="{{ filtros.fecha_hasta }}">
+      </div>
+
+      <div class="col-sm-6 col-lg-2">
+        <label for="filtroPersona" class="form-label">Persona</label>
+        <input type="text"
+               id="filtroPersona"
+               name="persona"
+               class="form-control"
+               value="{{ filtros.persona }}">
+      </div>
+
+      <div class="col-sm-6 col-lg-3">
+        <label for="filtroUnidad" class="form-label">Unidad</label>
+        <input type="text"
+               id="filtroUnidad"
+               name="unidad"
+               class="form-control"
+               value="{{ filtros.unidad }}">
+      </div>
+
+      <div class="col-12 d-flex flex-wrap gap-2">
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{{ url_for('reportes.reporte_entregas_proyecto', proyecto_id=proyecto.id) }}"
+           class="btn btn-outline-secondary">
+          Limpiar filtros
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if errores %}
+  <div class="alert alert-warning" role="alert">
+    <ul class="mb-0">
+      {% for error in errores %}
+        <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <p class="text-muted mb-0">
+    Resultados: {{ pagination.total }} unidad{% if pagination.total != 1 %}es{% endif %}
+  </p>
+</div>
+
+{% if filas %}
+  <div class="table-responsive">
+    <table class="table table-striped table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th scope="col">Unidad</th>
+          <th scope="col">Persona vinculada</th>
+          <th scope="col">Fecha de entrega</th>
+          <th scope="col" class="text-end">Saldo pendiente</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in filas %}
+          <tr>
+            <td class="fw-semibold">{{ fila.unidad.nombre }}</td>
+            <td>
+              {% if fila.relacion %}
+                {{ fila.relacion.persona.nombre_completo }}
+              {% else %}
+                <span class="text-muted">Sin persona vinculada</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if fila.relacion and fila.relacion.fecha_desde %}
+                {{ fila.relacion.fecha_desde.strftime('%d/%m/%Y') }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td class="text-end text-nowrap">
+              RD$ {{ "{:,.2f}".format(fila.saldo_pendiente) }}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="text-center text-muted py-5">
+    {% if hay_filtros %}
+      No se encontraron unidades que coincidan con los filtros seleccionados.
+    {% else %}
+      Este proyecto no tiene unidades registradas.
+    {% endif %}
+  </div>
+{% endif %}
+
+{% if pagination.pages > 1 %}
+  <nav class="mt-4" aria-label="Paginación del reporte de entregas">
+    <ul class="pagination justify-content-center flex-wrap">
+      <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+        {% if pagination.has_prev %}
+          <a class="page-link"
+             href="{{ url_for('reportes.reporte_entregas_proyecto', proyecto_id=proyecto.id, page=pagination.prev_num, **parametros_filtros) }}">
+            Anterior
+          </a>
+        {% else %}
+          <span class="page-link">Anterior</span>
+        {% endif %}
+      </li>
+
+      {% for numero in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+        {% if numero %}
+          <li class="page-item {% if numero == pagination.page %}active{% endif %}">
+            <a class="page-link"
+               href="{{ url_for('reportes.reporte_entregas_proyecto', proyecto_id=proyecto.id, page=numero, **parametros_filtros) }}">
+              {{ numero }}
+            </a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+        {% endif %}
+      {% endfor %}
+
+      <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+        {% if pagination.has_next %}
+          <a class="page-link"
+             href="{{ url_for('reportes.reporte_entregas_proyecto', proyecto_id=proyecto.id, page=pagination.next_num, **parametros_filtros) }}">
+            Siguiente
+          </a>
+        {% else %}
+          <span class="page-link">Siguiente</span>
+        {% endif %}
+      </li>
+    </ul>
+  </nav>
+{% endif %}
+{% endblock %}
